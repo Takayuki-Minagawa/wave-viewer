@@ -19,7 +19,7 @@
         <!-- コントロールパネル -->
         <section class="control-panel">
             <div class="control-group">
-                <label for="fileInput" class="file-label">
+                <label class="file-label">
                     <span class="file-icon">📁</span>
                     <span>ファイル選択</span>
                     <input type="file" id="fileInput" accept=".csv,.txt,.dat" hidden>
@@ -48,7 +48,7 @@
                 </select>
             </div>
 
-            <button id="analyzeBtn" class="btn btn-primary" disabled>
+            <button type="button" id="analyzeBtn" class="btn btn-primary" disabled>
                 <span>🔍 解析実行</span>
             </button>
         </section>
@@ -57,7 +57,7 @@
         <section id="dropZone" class="drop-zone">
             <div class="drop-zone-content">
                 <span class="drop-icon">📄</span>
-                <p>ファイルをドラッグ&ドロップ</p>
+                <p>ファイルをドラッグ&amp;ドロップ</p>
                 <p class="drop-hint">または上のボタンでファイルを選択</p>
                 <p class="drop-format">対応形式: CSV, TXT, DAT（1列の数値データ）</p>
             </div>
@@ -70,7 +70,7 @@
                 <div class="chart-header">
                     <h2>📈 時系列波形 (Waveform)</h2>
                     <div class="chart-controls">
-                        <button id="resetZoomWaveform" class="btn btn-small">リセット</button>
+                        <button type="button" id="resetZoomWaveform" class="btn btn-small">リセット</button>
                     </div>
                 </div>
                 <div class="chart-wrapper">
@@ -90,7 +90,7 @@
                         <label>
                             <input type="checkbox" id="powerSpectrum"> パワースペクトル
                         </label>
-                        <button id="resetZoomSpectrum" class="btn btn-small">リセット</button>
+                        <button type="button" id="resetZoomSpectrum" class="btn btn-small">リセット</button>
                     </div>
                 </div>
                 <div class="chart-wrapper">

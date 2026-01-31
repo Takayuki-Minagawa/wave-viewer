@@ -70,8 +70,8 @@ const Analysis = {
     median(data) {
         const sorted = [...data].sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 !== 0 
-            ? sorted[mid] 
+        return sorted.length % 2 !== 0
+            ? sorted[mid]
             : (sorted[mid - 1] + sorted[mid]) / 2;
     },
 
@@ -93,12 +93,14 @@ const Analysis = {
         const avg = this.mean(data);
         const std = this.standardDeviation(data);
         const n = data.length;
-        
-        if (std === 0) return 0;
-        
-        const sum = data.reduce((acc, val) => 
+
+        if (std === 0) {
+            return 0;
+        }
+
+        const sum = data.reduce((acc, val) =>
             acc + Math.pow((val - avg) / std, 3), 0);
-        
+
         return sum / n;
     },
 
@@ -111,12 +113,14 @@ const Analysis = {
         const avg = this.mean(data);
         const std = this.standardDeviation(data);
         const n = data.length;
-        
-        if (std === 0) return 0;
-        
-        const sum = data.reduce((acc, val) => 
+
+        if (std === 0) {
+            return 0;
+        }
+
+        const sum = data.reduce((acc, val) =>
             acc + Math.pow((val - avg) / std, 4), 0);
-        
+
         return (sum / n) - 3; // 過剰尖度
     },
 
@@ -134,7 +138,7 @@ const Analysis = {
         const meanVal = this.mean(data);
         const stdVal = this.standardDeviation(data);
         const rmsVal = this.rms(data);
-        
+
         return {
             count,
             duration,

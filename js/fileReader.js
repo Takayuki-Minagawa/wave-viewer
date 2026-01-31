@@ -11,15 +11,15 @@ const FileReaderModule = {
     readAsText(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            
+
             reader.onload = (event) => {
                 resolve(event.target.result);
             };
-            
+
             reader.onerror = (error) => {
                 reject(new Error('ファイルの読み込みに失敗しました: ' + error.message));
             };
-            
+
             reader.readAsText(file);
         });
     },
@@ -54,7 +54,7 @@ const FileReaderModule = {
         lines.forEach((line, index) => {
             try {
                 let value;
-                
+
                 if (detectedDelimiter) {
                     // 区切り文字がある場合は指定列を取得
                     const columns = line.split(detectedDelimiter);
@@ -66,7 +66,7 @@ const FileReaderModule = {
 
                 // 数値に変換
                 const num = this.parseNumber(value);
-                
+
                 if (!isNaN(num) && isFinite(num)) {
                     data.push(num);
                 } else {
@@ -96,18 +96,22 @@ const FileReaderModule = {
      * @returns {number}
      */
     parseNumber(str) {
-        if (typeof str !== 'string') return NaN;
-        
+        if (typeof str !== 'string') {
+            return NaN;
+        }
+
         // 前後の空白を除去
         str = str.trim();
-        
+
         // 空文字チェック
-        if (str === '') return NaN;
-        
+        if (str === '') {
+            return NaN;
+        }
+
         // 科学的表記に対応（例: 1.23e-4, 1.23E+4）
         // カンマ区切りの数値にも対応（例: 1,234.56）
         str = str.replace(/,(?=\d{3})/g, '');
-        
+
         return parseFloat(str);
     },
 
@@ -117,7 +121,9 @@ const FileReaderModule = {
      * @returns {string|null}
      */
     detectDelimiter(line) {
-        if (!line) return null;
+        if (!line) {
+            return null;
+        }
 
         const delimiters = [',', '\t', ';', ' '];
         const counts = {};

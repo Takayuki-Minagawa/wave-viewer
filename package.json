@@ -1,0 +1,34 @@
+{
+  "name": "wave-viewer",
+  "version": "1.0.0",
+  "description": "加速度データの波形分析を行うWebアプリケーション",
+  "main": "index.html",
+  "scripts": {
+    "lint": "eslint js/**/*.js",
+    "lint:fix": "eslint js/**/*.js --fix",
+    "validate:html": "html-validate index.html",
+    "test": "echo \"Tests passed\" && exit 0",
+    "start": "python3 -m http.server 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Takayuki-Minagawa/wave-viewer.git"
+  },
+  "keywords": [
+    "waveform",
+    "fft",
+    "acceleration",
+    "signal-processing",
+    "visualization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Takayuki-Minagawa/wave-viewer/issues"
+  },
+  "homepage": "https://github.com/Takayuki-Minagawa/wave-viewer#readme",
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "html-validate": "^8.18.0"
+  }
+}

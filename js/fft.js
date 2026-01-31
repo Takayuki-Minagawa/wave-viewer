@@ -40,20 +40,20 @@ const FFT = {
         for (let i = 0; i < n; i++) {
             let w;
             switch (windowType) {
-                case 'hanning':
-                    w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (n - 1)));
-                    break;
-                case 'hamming':
-                    w = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (n - 1));
-                    break;
-                case 'blackman':
-                    w = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1)) 
+            case 'hanning':
+                w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (n - 1)));
+                break;
+            case 'hamming':
+                w = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (n - 1));
+                break;
+            case 'blackman':
+                w = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1))
                         + 0.08 * Math.cos(4 * Math.PI * i / (n - 1));
-                    break;
-                case 'rectangular':
-                default:
-                    w = 1;
-                    break;
+                break;
+            case 'rectangular':
+            default:
+                w = 1;
+                break;
             }
             windowed[i] = data[i] * w;
         }
@@ -69,7 +69,9 @@ const FFT = {
     transform(real, imag) {
         const n = real.length;
 
-        if (n <= 1) return;
+        if (n <= 1) {
+            return;
+        }
 
         // ビット反転による並び替え
         for (let i = 0, j = 0; i < n; i++) {
@@ -150,12 +152,12 @@ const FFT = {
         for (let i = 0; i <= halfN; i++) {
             frequencies.push(i * df);
             let amp = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
-            
+
             if (normalize) {
                 // 正規化（DC成分以外は2倍）
                 amp = i === 0 || i === halfN ? amp / n : (2 * amp) / n;
             }
-            
+
             amplitudes.push(amp);
         }
 
@@ -195,8 +197,8 @@ const FFT = {
             }
         }
 
-        return { 
-            frequency: peakFreq, 
+        return {
+            frequency: peakFreq,
             amplitude: maxAmp,
             index: peakIndex
         };

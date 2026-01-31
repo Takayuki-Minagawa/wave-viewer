@@ -143,7 +143,7 @@ const WaveformChart = {
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
         // 対数スケール用のデータ変換
-        const displayValues = logScale 
+        const displayValues = logScale
             ? values.map(v => v > 0 ? Math.log10(v) : -10)
             : values;
 
@@ -192,7 +192,7 @@ const WaveformChart = {
                     tooltip: {
                         callbacks: {
                             label: (context) => {
-                                const originalValue = logScale 
+                                const originalValue = logScale
                                     ? Math.pow(10, context.parsed.y)
                                     : context.parsed.y;
                                 return `${originalValue.toExponential(4)}`;
@@ -286,7 +286,9 @@ const WaveformChart = {
      * @param {Object} options - オプション
      */
     updateSpectrumChart(frequencies, amplitudes, options = {}) {
-        if (!this.spectrumChart) return;
+        if (!this.spectrumChart) {
+            return;
+        }
 
         const {
             logScale = false,
@@ -299,18 +301,18 @@ const WaveformChart = {
         const filteredAmp = amplitudes.slice(startIndex);
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
-        const displayValues = logScale 
+        const displayValues = logScale
             ? values.map(v => v > 0 ? Math.log10(v) : -10)
             : values;
 
         this.spectrumChart.data.labels = labels;
         this.spectrumChart.data.datasets[0].data = displayValues;
         this.spectrumChart.data.datasets[0].label = isPowerSpectrum ? 'パワースペクトル' : '振幅スペクトル';
-        
+
         const yAxisLabel = isPowerSpectrum
             ? (logScale ? `パワー [log(${unit}²)]` : `パワー [${unit}²]`)
             : (logScale ? `振幅 [log(${unit})]` : `振幅 [${unit}]`);
-        
+
         this.spectrumChart.options.scales.y.title.text = yAxisLabel;
         this.spectrumChart.update();
     },

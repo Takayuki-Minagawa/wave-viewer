@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const isPowerSpectrum = elements.powerSpectrum.checked;
             const logScale = elements.logScale.checked;
-            
+
             WaveformChart.createSpectrumChart(
                 elements.spectrumCanvas,
                 state.frequencies,
@@ -240,7 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
      * スペクトル表示を更新
      */
     function updateSpectrumDisplay() {
-        if (!state.frequencies || !state.amplitudes) return;
+        if (!state.frequencies || !state.amplitudes) {
+            return;
+        }
 
         const isPowerSpectrum = elements.powerSpectrum.checked;
         const logScale = elements.logScale.checked;
