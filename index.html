@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Viewer - 加速度データ波形分析ツール</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <h1>📊 Wave Viewer</h1>
+            <p class="subtitle">加速度データ波形分析ツール</p>
+        </header>
+
+        <!-- コントロールパネル -->
+        <section class="control-panel">
+            <div class="control-group">
+                <label for="fileInput" class="file-label">
+                    <span class="file-icon">📁</span>
+                    <span>ファイル選択</span>
+                    <input type="file" id="fileInput" accept=".csv,.txt,.dat" hidden>
+                </label>
+                <span id="fileName" class="file-name">ファイル未選択</span>
+            </div>
+
+            <div class="control-group">
+                <label for="samplingRate">サンプリング周波数:</label>
+                <input type="number" id="samplingRate" value="100" min="1" step="1">
+                <span class="unit">Hz</span>
+            </div>
+
+            <div class="control-group">
+                <label for="skipHeader">ヘッダー行スキップ:</label>
+                <input type="number" id="skipHeader" value="0" min="0" step="1">
+                <span class="unit">行</span>
+            </div>
+
+            <div class="control-group">
+                <label for="dataUnit">データ単位:</label>
+                <select id="dataUnit">
+                    <option value="m/s²">m/s²</option>
+                    <option value="gal">gal (cm/s²)</option>
+                    <option value="g">g</option>
+                </select>
+            </div>
+
+            <button id="analyzeBtn" class="btn btn-primary" disabled>
+                <span>🔍 解析実行</span>
+            </button>
+        </section>
+
+        <!-- ドラッグ&ドロップエリア -->
+        <section id="dropZone" class="drop-zone">
+            <div class="drop-zone-content">
+                <span class="drop-icon">📄</span>
+                <p>ファイルをドラッグ&ドロップ</p>
+                <p class="drop-hint">または上のボタンでファイルを選択</p>
+                <p class="drop-format">対応形式: CSV, TXT, DAT（1列の数値データ）</p>
+            </div>
+        </section>
+
+        <!-- グラフセクション -->
+        <section id="chartsSection" class="charts-section hidden">
+            <!-- 時系列波形 -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>📈 時系列波形 (Waveform)</h2>
+                    <div class="chart-controls">
+                        <button id="resetZoomWaveform" class="btn btn-small">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="waveformChart"></canvas>
+                </div>
+                <p class="chart-hint">マウスホイールでズーム、ドラッグでパン</p>
+            </div>
+
+            <!-- フーリエスペクトル -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>📊 フーリエスペクトル (Fourier Spectrum)</h2>
+                    <div class="chart-controls">
+                        <label>
+                            <input type="checkbox" id="logScale"> 対数スケール
+                        </label>
+                        <label>
+                            <input type="checkbox" id="powerSpectrum"> パワースペクトル
+                        </label>
+                        <button id="resetZoomSpectrum" class="btn btn-small">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="spectrumChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 統計情報 -->
+        <section id="statsSection" class="stats-section hidden">
+            <h2>📋 統計情報</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">データ点数</span>
+                    <span id="statCount" class="stat-value">-</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">継続時間</span>
+                    <span id="statDuration" class="stat-value">-</span>
+                    <span class="stat-unit">sec</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">最大値</span>
+                    <span id="statMax" class="stat-value">-</span>
+                    <span id="statMaxUnit" class="stat-unit"></span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">最小値</span>
+                    <span id="statMin" class="stat-value">-</span>
+                    <span id="statMinUnit" class="stat-unit"></span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">平均値</span>
+                    <span id="statMean" class="stat-value">-</span>
+                    <span id="statMeanUnit" class="stat-unit"></span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">標準偏差</span>
+                    <span id="statStd" class="stat-value">-</span>
+                    <span id="statStdUnit" class="stat-unit"></span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">RMS</span>
+                    <span id="statRMS" class="stat-value">-</span>
+                    <span id="statRMSUnit" class="stat-unit"></span>
+                </div>
+                <div class="stat-card highlight">
+                    <span class="stat-label">ピーク周波数</span>
+                    <span id="statPeakFreq" class="stat-value">-</span>
+                    <span class="stat-unit">Hz</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- フッター -->
+        <footer class="footer">
+            <p>Wave Viewer - 加速度データ波形分析ツール</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript モジュール -->
+    <script src="js/fft.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/fileReader.js"></script>
+    <script src="js/waveform.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
