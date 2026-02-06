@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         currentFile: null,
         data: null,
+        metadata: null,
         frequencies: null,
         amplitudes: null,
         powers: null
@@ -155,14 +156,41 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.analyzeBtn.textContent = '解析中...';
 
             // パラメータ取得
-            const samplingRate = parseFloat(elements.samplingRate.value) || 100;
+            let samplingRate = parseFloat(elements.samplingRate.value) || 100;
             const skipHeader = parseInt(elements.skipHeader.value) || 0;
-            const unit = elements.dataUnit.value;
+            let unit = elements.dataUnit.value;
 
             // ファイル読み込み
-            state.data = await FileReaderModule.loadFile(state.currentFile, {
+            const result = await FileReaderModule.loadFile(state.currentFile, {
                 skipHeader: skipHeader
             });
+
+            state.data = result.data;
+            state.metadata = result.metadata;
+
+            // K-netフォーマットの場合、メタデータから設定を自動取得
+            if (state.metadata.isKnet) {
+                if (state.metadata.samplingRate) {
+                    samplingRate = state.metadata.samplingRate;
+                    elements.samplingRate.value = samplingRate;
+                    console.log(`サンプリング周波数を自動設定: ${samplingRate} Hz`);
+                }
+
+                // K-netデータは常にgal単位
+                unit = 'gal';
+                elements.dataUnit.value = unit;
+
+                // ヘッダースキップは不要（自動処理される）
+                elements.skipHeader.value = 0;
+
+                // メタデータ情報を表示
+                if (state.metadata.stationCode) {
+                    console.log(`観測点: ${state.metadata.stationCode}`);
+                }
+                if (state.metadata.direction) {
+                    console.log(`方向: ${state.metadata.direction}`);
+                }
+            }
 
             if (state.data.length < 2) {
                 throw new Error('データが不足しています（2点以上必要）');
