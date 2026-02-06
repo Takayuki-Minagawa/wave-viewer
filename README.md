@@ -39,6 +39,8 @@
 ```
 wave-viewer/
 ├── index.html          # メインHTML
+├── favicon.svg         # ファビコン（ダークモード）
+├── favicon-light.svg   # ファビコン（ライトモード）
 ├── css/
 │   └── style.css       # スタイルシート
 ├── js/
