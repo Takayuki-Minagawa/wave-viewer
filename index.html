@@ -74,7 +74,7 @@
             <!-- 時系列波形 -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <h2>📈 時系列波形 (Waveform)</h2>
+                    <h2>📈 加速度波形 (Acceleration)</h2>
                     <div class="chart-controls">
                         <button type="button" id="resetZoomWaveform" class="btn btn-small">リセット</button>
                     </div>
@@ -83,6 +83,34 @@
                     <canvas id="waveformChart"></canvas>
                 </div>
                 <p class="chart-hint">マウスホイールでズーム、ドラッグでパン</p>
+            </div>
+
+            <!-- 速度波形 -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🔷 速度波形 (Velocity)</h2>
+                    <div class="chart-controls">
+                        <button type="button" id="resetZoomVelocity" class="btn btn-small">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="velocityChart"></canvas>
+                </div>
+                <p class="chart-hint">積分により計算（ベースライン補正済み）</p>
+            </div>
+
+            <!-- 変位波形 -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🔶 変位波形 (Displacement)</h2>
+                    <div class="chart-controls">
+                        <button type="button" id="resetZoomDisplacement" class="btn btn-small">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="displacementChart"></canvas>
+                </div>
+                <p class="chart-hint">2重積分により計算（ベースライン補正済み）</p>
             </div>
 
             <!-- フーリエスペクトル -->
@@ -148,6 +176,25 @@
                     <span id="statPeakFreq" class="stat-value">-</span>
                     <span class="stat-unit">Hz</span>
                 </div>
+            </div>
+        </section>
+
+        <!-- エクスポートセクション -->
+        <section id="exportSection" class="export-section hidden">
+            <h2>💾 データエクスポート</h2>
+            <div class="export-buttons">
+                <button type="button" id="exportAcceleration" class="btn btn-secondary">
+                    <span>📥 加速度データ</span>
+                </button>
+                <button type="button" id="exportVelocity" class="btn btn-secondary">
+                    <span>📥 速度データ</span>
+                </button>
+                <button type="button" id="exportDisplacement" class="btn btn-secondary">
+                    <span>📥 変位データ</span>
+                </button>
+                <button type="button" id="exportAll" class="btn btn-primary">
+                    <span>📥 全データ（CSV）</span>
+                </button>
             </div>
         </section>
 

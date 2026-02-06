@@ -14,12 +14,22 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZone: document.getElementById('dropZone'),
         chartsSection: document.getElementById('chartsSection'),
         statsSection: document.getElementById('statsSection'),
+        exportSection: document.getElementById('exportSection'),
         waveformCanvas: document.getElementById('waveformChart'),
+        velocityCanvas: document.getElementById('velocityChart'),
+        displacementCanvas: document.getElementById('displacementChart'),
         spectrumCanvas: document.getElementById('spectrumChart'),
         resetZoomWaveform: document.getElementById('resetZoomWaveform'),
+        resetZoomVelocity: document.getElementById('resetZoomVelocity'),
+        resetZoomDisplacement: document.getElementById('resetZoomDisplacement'),
         resetZoomSpectrum: document.getElementById('resetZoomSpectrum'),
         logScale: document.getElementById('logScale'),
         powerSpectrum: document.getElementById('powerSpectrum'),
+        // エクスポートボタン
+        exportAcceleration: document.getElementById('exportAcceleration'),
+        exportVelocity: document.getElementById('exportVelocity'),
+        exportDisplacement: document.getElementById('exportDisplacement'),
+        exportAll: document.getElementById('exportAll'),
         // 統計情報
         statCount: document.getElementById('statCount'),
         statDuration: document.getElementById('statDuration'),
@@ -40,10 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         currentFile: null,
         data: null,
+        velocity: null,
+        displacement: null,
         metadata: null,
         frequencies: null,
         amplitudes: null,
-        powers: null
+        powers: null,
+        samplingRate: null,
+        unit: null
     };
 
     /**
@@ -72,6 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.resetZoomWaveform.addEventListener('click', () => {
             WaveformChart.resetWaveformZoom();
         });
+        elements.resetZoomVelocity.addEventListener('click', () => {
+            WaveformChart.resetVelocityZoom();
+        });
+        elements.resetZoomDisplacement.addEventListener('click', () => {
+            WaveformChart.resetDisplacementZoom();
+        });
         elements.resetZoomSpectrum.addEventListener('click', () => {
             WaveformChart.resetSpectrumZoom();
         });
@@ -79,6 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // スペクトル表示オプション
         elements.logScale.addEventListener('change', updateSpectrumDisplay);
         elements.powerSpectrum.addEventListener('change', updateSpectrumDisplay);
+
+        // エクスポートボタン
+        elements.exportAcceleration.addEventListener('click', () => exportData('acceleration'));
+        elements.exportVelocity.addEventListener('click', () => exportData('velocity'));
+        elements.exportDisplacement.addEventListener('click', () => exportData('displacement'));
+        elements.exportAll.addEventListener('click', () => exportData('all'));
     }
 
     /**
@@ -196,6 +222,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('データが不足しています（2点以上必要）');
             }
 
+            // 状態を保存
+            state.samplingRate = samplingRate;
+            state.unit = unit;
+
+            // 速度と変位を計算
+            const { velocity, displacement } = Analysis.computeVelocityAndDisplacement(
+                state.data,
+                samplingRate,
+                unit
+            );
+            state.velocity = velocity;
+            state.displacement = displacement;
+
+            console.log(`速度最大値: ${Analysis.max(velocity).toExponential(4)} m/s`);
+            console.log(`変位最大値: ${(Analysis.max(displacement) * 100).toFixed(4)} cm`);
+
             // FFT 解析
             const spectrumResult = FFT.amplitudeSpectrum(state.data, samplingRate);
             state.frequencies = spectrumResult.frequencies;
@@ -216,6 +258,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 unit
             );
 
+            WaveformChart.createVelocityChart(
+                elements.velocityCanvas,
+                state.velocity,
+                samplingRate
+            );
+
+            WaveformChart.createDisplacementChart(
+                elements.displacementCanvas,
+                state.displacement,
+                samplingRate
+            );
+
             const isPowerSpectrum = elements.powerSpectrum.checked;
             const logScale = elements.logScale.checked;
 
@@ -232,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // セクション表示
             elements.chartsSection.classList.remove('hidden');
             elements.statsSection.classList.remove('hidden');
+            elements.exportSection.classList.remove('hidden');
             elements.dropZone.classList.add('hidden');
 
         } catch (error) {
@@ -281,6 +336,69 @@ document.addEventListener('DOMContentLoaded', () => {
             isPowerSpectrum ? state.powers : state.amplitudes,
             { logScale, isPowerSpectrum, unit }
         );
+    }
+
+    /**
+     * データをCSV形式でエクスポート
+     * @param {string} type - データタイプ（acceleration, velocity, displacement, all）
+     */
+    function exportData(type) {
+        if (!state.data) {
+            alert('データがありません。まずファイルを読み込んで解析を実行してください。');
+            return;
+        }
+
+        let csvContent = '';
+        let filename = '';
+
+        const time = state.data.map((_, index) => index / state.samplingRate);
+
+        if (type === 'acceleration') {
+            // 加速度データのみ
+            csvContent = 'Time(s),Acceleration(' + state.unit + ')\n';
+            for (let i = 0; i < state.data.length; i++) {
+                csvContent += `${time[i].toFixed(6)},${state.data[i]}\n`;
+            }
+            filename = 'acceleration.csv';
+        } else if (type === 'velocity') {
+            // 速度データのみ
+            csvContent = 'Time(s),Velocity(m/s)\n';
+            for (let i = 0; i < state.velocity.length; i++) {
+                csvContent += `${time[i].toFixed(6)},${state.velocity[i]}\n`;
+            }
+            filename = 'velocity.csv';
+        } else if (type === 'displacement') {
+            // 変位データのみ
+            csvContent = 'Time(s),Displacement(m)\n';
+            for (let i = 0; i < state.displacement.length; i++) {
+                csvContent += `${time[i].toFixed(6)},${state.displacement[i]}\n`;
+            }
+            filename = 'displacement.csv';
+        } else if (type === 'all') {
+            // 全データ
+            csvContent = `Time(s),Acceleration(${state.unit}),Velocity(m/s),Displacement(m)\n`;
+            for (let i = 0; i < state.data.length; i++) {
+                csvContent += `${time[i].toFixed(6)},${state.data[i]},${state.velocity[i]},${state.displacement[i]}\n`;
+            }
+            filename = 'all_data.csv';
+        }
+
+        // BOMを追加（Excel対応）
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+        // ダウンロードリンクを作成
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log(`エクスポート完了: ${filename}`);
     }
 
     // アプリケーション開始

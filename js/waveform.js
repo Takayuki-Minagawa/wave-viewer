@@ -4,6 +4,8 @@
 
 const WaveformChart = {
     waveformChart: null,
+    velocityChart: null,
+    displacementChart: null,
     spectrumChart: null,
 
     /**
@@ -113,6 +115,155 @@ const WaveformChart = {
         });
 
         return this.waveformChart;
+    },
+
+    /**
+     * 速度波形チャートを作成
+     * @param {HTMLCanvasElement} canvas - キャンバス要素
+     * @param {number[]} data - 速度データ（m/s）
+     * @param {number} samplingRate - サンプリング周波数
+     */
+    createVelocityChart(canvas, data, samplingRate) {
+        // 既存のチャートを破棄
+        if (this.velocityChart) {
+            this.velocityChart.destroy();
+        }
+
+        // 時間軸を生成
+        const timeData = data.map((_, index) => index / samplingRate);
+
+        // データポイントが多い場合はダウンサンプリング
+        const { labels, values } = this.downsample(timeData, data, 2000);
+
+        this.velocityChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '速度',
+                    data: values,
+                    borderColor: 'rgba(52, 168, 83, 1)',
+                    backgroundColor: 'rgba(52, 168, 83, 0.1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0
+                }]
+            },
+            options: {
+                ...this.defaultOptions,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: '時間 [sec]'
+                        },
+                        ticks: {
+                            callback: (value) => value.toFixed(2)
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '速度 [m/s]'
+                        }
+                    }
+                },
+                plugins: {
+                    ...this.defaultOptions.plugins,
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                return `${context.parsed.y.toFixed(6)} m/s`;
+                            },
+                            title: (tooltipItems) => {
+                                return `時間: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return this.velocityChart;
+    },
+
+    /**
+     * 変位波形チャートを作成
+     * @param {HTMLCanvasElement} canvas - キャンバス要素
+     * @param {number[]} data - 変位データ（m）
+     * @param {number} samplingRate - サンプリング周波数
+     */
+    createDisplacementChart(canvas, data, samplingRate) {
+        // 既存のチャートを破棄
+        if (this.displacementChart) {
+            this.displacementChart.destroy();
+        }
+
+        // 時間軸を生成
+        const timeData = data.map((_, index) => index / samplingRate);
+
+        // データポイントが多い場合はダウンサンプリング
+        const { labels, values } = this.downsample(timeData, data, 2000);
+
+        // mをcmに変換（見やすくするため）
+        const valuesInCm = values.map(v => v * 100);
+
+        this.displacementChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '変位',
+                    data: valuesInCm,
+                    borderColor: 'rgba(251, 140, 0, 1)',
+                    backgroundColor: 'rgba(251, 140, 0, 0.1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0
+                }]
+            },
+            options: {
+                ...this.defaultOptions,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: '時間 [sec]'
+                        },
+                        ticks: {
+                            callback: (value) => value.toFixed(2)
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '変位 [cm]'
+                        }
+                    }
+                },
+                plugins: {
+                    ...this.defaultOptions.plugins,
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                return `${context.parsed.y.toFixed(4)} cm`;
+                            },
+                            title: (tooltipItems) => {
+                                return `時間: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return this.displacementChart;
     },
 
     /**
@@ -271,6 +422,24 @@ const WaveformChart = {
     },
 
     /**
+     * 速度チャートをリセット
+     */
+    resetVelocityZoom() {
+        if (this.velocityChart) {
+            this.velocityChart.resetZoom();
+        }
+    },
+
+    /**
+     * 変位チャートをリセット
+     */
+    resetDisplacementZoom() {
+        if (this.displacementChart) {
+            this.displacementChart.resetZoom();
+        }
+    },
+
+    /**
      * スペクトルチャートをリセット
      */
     resetSpectrumZoom() {
@@ -324,6 +493,14 @@ const WaveformChart = {
         if (this.waveformChart) {
             this.waveformChart.destroy();
             this.waveformChart = null;
+        }
+        if (this.velocityChart) {
+            this.velocityChart.destroy();
+            this.velocityChart = null;
+        }
+        if (this.displacementChart) {
+            this.displacementChart.destroy();
+            this.displacementChart = null;
         }
         if (this.spectrumChart) {
             this.spectrumChart.destroy();
