@@ -290,6 +290,12 @@ const WaveformChart = {
         const filteredFreq = frequencies.slice(startIndex);
         const filteredAmp = amplitudes.slice(startIndex);
 
+        // 0.5Hz以上の最大値でY軸レンジを設定
+        const yMaxValue = this._getMaxAbove05Hz(filteredFreq, filteredAmp);
+        const yAxisMax = logScale
+            ? (yMaxValue > 0 ? Math.log10(yMaxValue * 1.1) : undefined)
+            : (yMaxValue > 0 ? yMaxValue * 1.1 : undefined);
+
         // ダウンサンプリング
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
@@ -332,6 +338,7 @@ const WaveformChart = {
                         }
                     },
                     y: {
+                        max: yAxisMax,
                         title: {
                             display: true,
                             text: yAxisLabel
@@ -358,6 +365,22 @@ const WaveformChart = {
         });
 
         return this.spectrumChart;
+    },
+
+    /**
+     * 0.5Hz以上の最大値を取得
+     * @param {number[]} frequencies - 周波数配列
+     * @param {number[]} amplitudes - 振幅配列
+     * @returns {number} - 最大値
+     */
+    _getMaxAbove05Hz(frequencies, amplitudes) {
+        let max = 0;
+        for (let i = 0; i < frequencies.length; i++) {
+            if (frequencies[i] >= 0.5 && amplitudes[i] > max) {
+                max = amplitudes[i];
+            }
+        }
+        return max;
     },
 
     /**
@@ -468,6 +491,13 @@ const WaveformChart = {
         const startIndex = 1;
         const filteredFreq = frequencies.slice(startIndex);
         const filteredAmp = amplitudes.slice(startIndex);
+
+        // 0.5Hz以上の最大値でY軸レンジを設定
+        const yMaxValue = this._getMaxAbove05Hz(filteredFreq, filteredAmp);
+        const yAxisMax = logScale
+            ? (yMaxValue > 0 ? Math.log10(yMaxValue * 1.1) : undefined)
+            : (yMaxValue > 0 ? yMaxValue * 1.1 : undefined);
+
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
         const displayValues = logScale
@@ -482,6 +512,7 @@ const WaveformChart = {
             ? (logScale ? `パワー [log(${unit}²)]` : `パワー [${unit}²]`)
             : (logScale ? `振幅 [log(${unit})]` : `振幅 [${unit}]`);
 
+        this.spectrumChart.options.scales.y.max = yAxisMax;
         this.spectrumChart.options.scales.y.title.text = yAxisLabel;
         this.spectrumChart.update();
     },
