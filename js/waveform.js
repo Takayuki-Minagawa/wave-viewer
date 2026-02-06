@@ -85,7 +85,7 @@ const WaveformChart = {
                         position: 'bottom',
                         title: {
                             display: true,
-                            text: '時間 [sec]'
+                            text: `${I18n.t('charts.time')} [sec]`
                         },
                         ticks: {
                             callback: (value) => value.toFixed(2)
@@ -94,7 +94,7 @@ const WaveformChart = {
                     y: {
                         title: {
                             display: true,
-                            text: `加速度 [${unit}]`
+                            text: `${I18n.t('charts.acceleration')} [${unit}]`
                         }
                     }
                 },
@@ -158,7 +158,7 @@ const WaveformChart = {
                         position: 'bottom',
                         title: {
                             display: true,
-                            text: '時間 [sec]'
+                            text: `${I18n.t('charts.time')} [sec]`
                         },
                         ticks: {
                             callback: (value) => value.toFixed(2)
@@ -167,7 +167,7 @@ const WaveformChart = {
                     y: {
                         title: {
                             display: true,
-                            text: '速度 [m/s]'
+                            text: `${I18n.t('charts.velocity')} [m/s]`
                         }
                     }
                 },
@@ -234,7 +234,7 @@ const WaveformChart = {
                         position: 'bottom',
                         title: {
                             display: true,
-                            text: '時間 [sec]'
+                            text: `${I18n.t('charts.time')} [sec]`
                         },
                         ticks: {
                             callback: (value) => value.toFixed(2)
@@ -243,7 +243,7 @@ const WaveformChart = {
                     y: {
                         title: {
                             display: true,
-                            text: '変位 [cm]'
+                            text: `${I18n.t('charts.displacement')} [cm]`
                         }
                     }
                 },
@@ -325,7 +325,7 @@ const WaveformChart = {
                         position: 'bottom',
                         title: {
                             display: true,
-                            text: '周波数 [Hz]'
+                            text: `${I18n.t('charts.frequency')} [Hz]`
                         },
                         ticks: {
                             callback: (value) => value.toFixed(1)

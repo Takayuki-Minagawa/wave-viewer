@@ -18,8 +18,16 @@
     <div class="container">
         <!-- ヘッダー -->
         <header class="header">
-            <h1>📊 Wave Viewer</h1>
-            <p class="subtitle">加速度データ波形分析ツール</p>
+            <div class="header-content">
+                <div>
+                    <h1 data-i18n="header.title">📊 Wave Viewer</h1>
+                    <p class="subtitle" data-i18n="header.subtitle">加速度データ波形分析ツール</p>
+                </div>
+                <div class="lang-switcher">
+                    <button type="button" id="langJa" class="lang-btn active">日本語</button>
+                    <button type="button" id="langEn" class="lang-btn">English</button>
+                </div>
+            </div>
         </header>
 
         <!-- コントロールパネル -->
@@ -27,26 +35,26 @@
             <div class="control-group">
                 <label class="file-label">
                     <span class="file-icon">📁</span>
-                    <span>ファイル選択</span>
+                    <span data-i18n="controls.fileSelect">ファイル選択</span>
                     <input type="file" id="fileInput" accept=".csv,.txt,.dat" hidden>
                 </label>
-                <span id="fileName" class="file-name">ファイル未選択</span>
+                <span id="fileName" class="file-name" data-i18n="controls.fileNotSelected">ファイル未選択</span>
             </div>
 
             <div class="control-group">
-                <label for="samplingRate">サンプリング周波数:</label>
+                <label for="samplingRate" data-i18n="controls.samplingRate">サンプリング周波数:</label>
                 <input type="number" id="samplingRate" value="100" min="1" step="1">
                 <span class="unit">Hz</span>
             </div>
 
             <div class="control-group">
-                <label for="skipHeader">ヘッダー行スキップ:</label>
+                <label for="skipHeader" data-i18n="controls.skipHeader">ヘッダー行スキップ:</label>
                 <input type="number" id="skipHeader" value="0" min="0" step="1">
-                <span class="unit">行</span>
+                <span class="unit" data-i18n-unit="lines">行</span>
             </div>
 
             <div class="control-group">
-                <label for="dataUnit">データ単位:</label>
+                <label for="dataUnit" data-i18n="controls.dataUnit">データ単位:</label>
                 <select id="dataUnit">
                     <option value="m/s²">m/s²</option>
                     <option value="gal">gal (cm/s²)</option>
@@ -55,7 +63,7 @@
             </div>
 
             <button type="button" id="analyzeBtn" class="btn btn-primary" disabled>
-                <span>🔍 解析実行</span>
+                <span data-i18n="controls.analyzeBtn">🔍 解析実行</span>
             </button>
         </section>
 
@@ -63,9 +71,9 @@
         <section id="dropZone" class="drop-zone">
             <div class="drop-zone-content">
                 <span class="drop-icon">📄</span>
-                <p>ファイルをドラッグ&amp;ドロップ</p>
-                <p class="drop-hint">または上のボタンでファイルを選択</p>
-                <p class="drop-format">対応形式: CSV, TXT, DAT（1列の数値データ）、K-net/KiK-net形式</p>
+                <p data-i18n="dropZone.title">ファイルをドラッグ&amp;ドロップ</p>
+                <p class="drop-hint" data-i18n="dropZone.hint">または上のボタンでファイルを選択</p>
+                <p class="drop-format" data-i18n="dropZone.format">対応形式: CSV, TXT, DAT（1列の数値データ）、K-net/KiK-net形式</p>
             </div>
         </section>
 
@@ -74,57 +82,57 @@
             <!-- 時系列波形 -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <h2>📈 加速度波形 (Acceleration)</h2>
+                    <h2>📈 <span data-i18n="charts.acceleration">加速度波形 (Acceleration)</span></h2>
                     <div class="chart-controls">
-                        <button type="button" id="resetZoomWaveform" class="btn btn-small">リセット</button>
+                        <button type="button" id="resetZoomWaveform" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
                     </div>
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="waveformChart"></canvas>
                 </div>
-                <p class="chart-hint">マウスホイールでズーム、ドラッグでパン</p>
+                <p class="chart-hint" data-i18n="charts.zoomHint">マウスホイールでズーム、ドラッグでパン</p>
             </div>
 
             <!-- 速度波形 -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <h2>🔷 速度波形 (Velocity)</h2>
+                    <h2>🔷 <span data-i18n="charts.velocity">速度波形 (Velocity)</span></h2>
                     <div class="chart-controls">
-                        <button type="button" id="resetZoomVelocity" class="btn btn-small">リセット</button>
+                        <button type="button" id="resetZoomVelocity" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
                     </div>
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="velocityChart"></canvas>
                 </div>
-                <p class="chart-hint">積分により計算（ベースライン補正済み）</p>
+                <p class="chart-hint" data-i18n="charts.integrationHint">積分により計算（ベースライン補正済み）</p>
             </div>
 
             <!-- 変位波形 -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <h2>🔶 変位波形 (Displacement)</h2>
+                    <h2>🔶 <span data-i18n="charts.displacement">変位波形 (Displacement)</span></h2>
                     <div class="chart-controls">
-                        <button type="button" id="resetZoomDisplacement" class="btn btn-small">リセット</button>
+                        <button type="button" id="resetZoomDisplacement" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
                     </div>
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="displacementChart"></canvas>
                 </div>
-                <p class="chart-hint">2重積分により計算（ベースライン補正済み）</p>
+                <p class="chart-hint" data-i18n="charts.doubleIntegrationHint">2重積分により計算（ベースライン補正済み）</p>
             </div>
 
             <!-- フーリエスペクトル -->
             <div class="chart-container">
                 <div class="chart-header">
-                    <h2>📊 フーリエスペクトル (Fourier Spectrum)</h2>
+                    <h2>📊 <span data-i18n="charts.spectrum">フーリエスペクトル (Fourier Spectrum)</span></h2>
                     <div class="chart-controls">
                         <label>
-                            <input type="checkbox" id="logScale"> 対数スケール
+                            <input type="checkbox" id="logScale"> <span data-i18n="charts.logScale">対数スケール</span>
                         </label>
                         <label>
-                            <input type="checkbox" id="powerSpectrum"> パワースペクトル
+                            <input type="checkbox" id="powerSpectrum"> <span data-i18n="charts.powerSpectrum">パワースペクトル</span>
                         </label>
-                        <button type="button" id="resetZoomSpectrum" class="btn btn-small">リセット</button>
+                        <button type="button" id="resetZoomSpectrum" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
                     </div>
                 </div>
                 <div class="chart-wrapper">
@@ -135,44 +143,44 @@
 
         <!-- 統計情報 -->
         <section id="statsSection" class="stats-section hidden">
-            <h2>📋 統計情報</h2>
+            <h2>📋 <span data-i18n="stats.title">統計情報</span></h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span class="stat-label">データ点数</span>
+                    <span class="stat-label" data-i18n="stats.dataPoints">データ点数</span>
                     <span id="statCount" class="stat-value">-</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">継続時間</span>
+                    <span class="stat-label" data-i18n="stats.duration">継続時間</span>
                     <span id="statDuration" class="stat-value">-</span>
                     <span class="stat-unit">sec</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">最大値</span>
+                    <span class="stat-label" data-i18n="stats.max">最大値</span>
                     <span id="statMax" class="stat-value">-</span>
                     <span id="statMaxUnit" class="stat-unit"></span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">最小値</span>
+                    <span class="stat-label" data-i18n="stats.min">最小値</span>
                     <span id="statMin" class="stat-value">-</span>
                     <span id="statMinUnit" class="stat-unit"></span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">平均値</span>
+                    <span class="stat-label" data-i18n="stats.mean">平均値</span>
                     <span id="statMean" class="stat-value">-</span>
                     <span id="statMeanUnit" class="stat-unit"></span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">標準偏差</span>
+                    <span class="stat-label" data-i18n="stats.std">標準偏差</span>
                     <span id="statStd" class="stat-value">-</span>
                     <span id="statStdUnit" class="stat-unit"></span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">RMS</span>
+                    <span class="stat-label" data-i18n="stats.rms">RMS</span>
                     <span id="statRMS" class="stat-value">-</span>
                     <span id="statRMSUnit" class="stat-unit"></span>
                 </div>
                 <div class="stat-card highlight">
-                    <span class="stat-label">ピーク周波数</span>
+                    <span class="stat-label" data-i18n="stats.peakFreq">ピーク周波数</span>
                     <span id="statPeakFreq" class="stat-value">-</span>
                     <span class="stat-unit">Hz</span>
                 </div>
@@ -181,30 +189,63 @@
 
         <!-- エクスポートセクション -->
         <section id="exportSection" class="export-section hidden">
-            <h2>💾 データエクスポート</h2>
+            <h2>💾 <span data-i18n="export.title">データエクスポート</span></h2>
             <div class="export-buttons">
                 <button type="button" id="exportAcceleration" class="btn btn-secondary">
-                    <span>📥 加速度データ</span>
+                    <span data-i18n="export.acceleration">📥 加速度データ</span>
                 </button>
                 <button type="button" id="exportVelocity" class="btn btn-secondary">
-                    <span>📥 速度データ</span>
+                    <span data-i18n="export.velocity">📥 速度データ</span>
                 </button>
                 <button type="button" id="exportDisplacement" class="btn btn-secondary">
-                    <span>📥 変位データ</span>
+                    <span data-i18n="export.displacement">📥 変位データ</span>
                 </button>
                 <button type="button" id="exportAll" class="btn btn-primary">
-                    <span>📥 全データ（CSV）</span>
+                    <span data-i18n="export.all">📥 全データ（CSV）</span>
                 </button>
+            </div>
+        </section>
+
+        <!-- マニュアルセクション -->
+        <section class="manual-section">
+            <h2>📖 <span data-i18n="manual.title">使い方ガイド</span></h2>
+
+            <div class="manual-content">
+                <div class="manual-item">
+                    <h3 data-i18n="manual.quickStart">クイックスタート</h3>
+                    <ul id="quickStartList"></ul>
+                </div>
+
+                <div class="manual-item">
+                    <h3 data-i18n="manual.dataFormat">対応データ形式</h3>
+                    <ul id="dataFormatList"></ul>
+                </div>
+
+                <div class="manual-item">
+                    <h3 data-i18n="manual.features">主な機能</h3>
+                    <ul id="featuresList"></ul>
+                </div>
+
+                <div class="manual-item">
+                    <h3 data-i18n="manual.operations">操作方法</h3>
+                    <ul id="operationsList"></ul>
+                </div>
+
+                <div class="manual-item">
+                    <h3 data-i18n="manual.notes">注意事項</h3>
+                    <ul id="notesList"></ul>
+                </div>
             </div>
         </section>
 
         <!-- フッター -->
         <footer class="footer">
-            <p>Wave Viewer - 加速度データ波形分析ツール</p>
+            <p>Wave Viewer - <span data-i18n="header.subtitle">加速度データ波形分析ツール</span></p>
         </footer>
     </div>
 
     <!-- JavaScript モジュール -->
+    <script src="js/i18n.js"></script>
     <script src="js/fft.js"></script>
     <script src="js/analysis.js"></script>
     <script src="js/fileReader.js"></script>

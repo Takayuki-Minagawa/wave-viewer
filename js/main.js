@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
      * 初期化
      */
     function init() {
+        // 言語設定を読み込み
+        I18n.loadLangFromStorage();
+        updateLanguage();
         setupEventListeners();
     }
 
@@ -105,6 +108,16 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.exportVelocity.addEventListener('click', () => exportData('velocity'));
         elements.exportDisplacement.addEventListener('click', () => exportData('displacement'));
         elements.exportAll.addEventListener('click', () => exportData('all'));
+
+        // 言語切り替えボタン
+        document.getElementById('langJa').addEventListener('click', () => {
+            I18n.setLang('ja');
+            updateLanguage();
+        });
+        document.getElementById('langEn').addEventListener('click', () => {
+            I18n.setLang('en');
+            updateLanguage();
+        });
     }
 
     /**
@@ -155,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadFile(file) {
         // ファイル形式チェック
         if (!FileReaderModule.isValidFileType(file)) {
-            alert('対応していないファイル形式です。\nCSV, TXT, DAT ファイルを選択してください。');
+            alert(I18n.t('messages.fileTypeError'));
             return;
         }
 
@@ -172,14 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function runAnalysis() {
         if (!state.currentFile) {
-            alert('ファイルを選択してください。');
+            alert(I18n.t('messages.noFileError'));
             return;
         }
 
         try {
             // ローディング表示
             elements.analyzeBtn.disabled = true;
-            elements.analyzeBtn.textContent = '解析中...';
+            elements.analyzeBtn.querySelector('span').textContent = I18n.t('controls.analyzing');
 
             // パラメータ取得
             let samplingRate = parseFloat(elements.samplingRate.value) || 100;
@@ -290,11 +303,11 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.dropZone.classList.add('hidden');
 
         } catch (error) {
-            console.error('解析エラー:', error);
-            alert('解析エラー: ' + error.message);
+            console.error(I18n.t('messages.analysisError'), error);
+            alert(I18n.t('messages.analysisError') + error.message);
         } finally {
             elements.analyzeBtn.disabled = false;
-            elements.analyzeBtn.innerHTML = '<span>🔍 解析実行</span>';
+            elements.analyzeBtn.querySelector('span').textContent = I18n.t('controls.analyzeBtn');
         }
     }
 
@@ -344,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function exportData(type) {
         if (!state.data) {
-            alert('データがありません。まずファイルを読み込んで解析を実行してください。');
+            alert(I18n.t('messages.noDataError'));
             return;
         }
 
@@ -398,7 +411,135 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
         document.body.removeChild(link);
 
-        console.log(`エクスポート完了: ${filename}`);
+        console.log(I18n.t('messages.exportComplete') + filename);
+    }
+
+    /**
+     * 言語表示を更新
+     */
+    function updateLanguage() {
+        const lang = I18n.getCurrentLang();
+
+        // 言語ボタンのアクティブ状態を更新
+        document.getElementById('langJa').classList.toggle('active', lang === 'ja');
+        document.getElementById('langEn').classList.toggle('active', lang === 'en');
+
+        // data-i18n属性を持つ要素のテキストを更新
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            const text = I18n.t(key);
+
+            if (element.tagName === 'INPUT' && element.type === 'button') {
+                element.value = text;
+            } else {
+                element.textContent = text;
+            }
+        });
+
+        // 単位表示の更新
+        const unitElement = document.querySelector('[data-i18n-unit="lines"]');
+        if (unitElement) {
+            unitElement.textContent = lang === 'ja' ? '行' : 'lines';
+        }
+
+        // マニュアルのリスト項目を更新
+        updateManualLists();
+
+        // チャートのラベルを更新（既にチャートが表示されている場合）
+        if (state.data) {
+            updateChartLabels();
+        }
+    }
+
+    /**
+     * マニュアルのリスト項目を更新
+     */
+    function updateManualLists() {
+        // クイックスタート
+        const quickStartList = document.getElementById('quickStartList');
+        quickStartList.innerHTML = '';
+        I18n.t('manual.quickStartContent').forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            quickStartList.appendChild(li);
+        });
+
+        // データ形式
+        const dataFormatList = document.getElementById('dataFormatList');
+        dataFormatList.innerHTML = '';
+        I18n.t('manual.dataFormatContent').forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            dataFormatList.appendChild(li);
+        });
+
+        // 主な機能
+        const featuresList = document.getElementById('featuresList');
+        featuresList.innerHTML = '';
+        I18n.t('manual.featuresContent').forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            featuresList.appendChild(li);
+        });
+
+        // 操作方法
+        const operationsList = document.getElementById('operationsList');
+        operationsList.innerHTML = '';
+        I18n.t('manual.operationsContent').forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            operationsList.appendChild(li);
+        });
+
+        // 注意事項
+        const notesList = document.getElementById('notesList');
+        notesList.innerHTML = '';
+        I18n.t('manual.notesContent').forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            notesList.appendChild(li);
+        });
+    }
+
+    /**
+     * チャートのラベルを更新
+     */
+    function updateChartLabels() {
+        const unit = state.unit;
+
+        // 加速度チャート
+        if (WaveformChart.waveformChart) {
+            WaveformChart.waveformChart.options.scales.x.title.text =
+                `${I18n.t('charts.time')} [sec]`;
+            WaveformChart.waveformChart.options.scales.y.title.text =
+                `${I18n.t('charts.acceleration')} [${unit}]`;
+            WaveformChart.waveformChart.update();
+        }
+
+        // 速度チャート
+        if (WaveformChart.velocityChart) {
+            WaveformChart.velocityChart.options.scales.x.title.text =
+                `${I18n.t('charts.time')} [sec]`;
+            WaveformChart.velocityChart.options.scales.y.title.text =
+                `${I18n.t('charts.velocity')} [m/s]`;
+            WaveformChart.velocityChart.update();
+        }
+
+        // 変位チャート
+        if (WaveformChart.displacementChart) {
+            WaveformChart.displacementChart.options.scales.x.title.text =
+                `${I18n.t('charts.time')} [sec]`;
+            WaveformChart.displacementChart.options.scales.y.title.text =
+                `${I18n.t('charts.displacement')} [cm]`;
+            WaveformChart.displacementChart.update();
+        }
+
+        // スペクトルチャート
+        if (WaveformChart.spectrumChart) {
+            WaveformChart.spectrumChart.options.scales.x.title.text =
+                `${I18n.t('charts.frequency')} [Hz]`;
+            WaveformChart.spectrumChart.update();
+        }
     }
 
     // アプリケーション開始

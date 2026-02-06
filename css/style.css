@@ -43,13 +43,20 @@ body {
 
 /* ヘッダー */
 .header {
-    text-align: center;
-    padding: 30px 0;
+    padding: 30px 20px;
     background: linear-gradient(135deg, var(--primary-color), #6366f1);
     color: white;
     border-radius: var(--radius);
     margin-bottom: 20px;
     box-shadow: var(--shadow);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .header h1 {
@@ -60,6 +67,35 @@ body {
 .header .subtitle {
     font-size: 1.1rem;
     opacity: 0.9;
+}
+
+/* 言語切り替え */
+.lang-switcher {
+    display: flex;
+    gap: 5px;
+}
+
+.lang-btn {
+    padding: 8px 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: white;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.lang-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.lang-btn.active {
+    background: white;
+    color: var(--primary-color);
+    border-color: white;
 }
 
 /* コントロールパネル */
@@ -370,6 +406,77 @@ body {
 .export-buttons .btn {
     flex: 1;
     min-width: 150px;
+}
+
+/* マニュアルセクション */
+.manual-section {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+.manual-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: var(--text-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+}
+
+.manual-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.manual-item {
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: var(--transition);
+}
+
+.manual-item:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.manual-item h3 {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.manual-item h3::before {
+    content: '▸';
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.manual-item ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.manual-item li {
+    padding: 8px 0;
+    padding-left: 20px;
+    position: relative;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+.manual-item li::before {
+    content: '•';
+    position: absolute;
+    left: 5px;
+    color: var(--primary-color);
+    font-weight: bold;
 }
 
 /* フッター */

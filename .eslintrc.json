@@ -13,7 +13,8 @@
     "FFT": "writable",
     "Analysis": "writable",
     "FileReaderModule": "writable",
-    "WaveformChart": "writable"
+    "WaveformChart": "writable",
+    "I18n": "writable"
   },
   "rules": {
     "indent": ["error", 4],
