@@ -115,10 +115,10 @@ const FileReaderModule = {
         const hasSamplingFreq = lines.length > 10 && lines[10] && lines[10].includes('Sampling Freq');
         const hasScaleFactor = lines.length > 13 && lines[13] && lines[13].includes('Scale Factor');
 
-        // データ行（18行目以降）に「→」が含まれているかチェック
-        const hasArrow = lines.length > 17 && lines[17] && lines[17].includes('→');
+        // データ行（18行目以降）に数値データが含まれているかチェック
+        const hasDataLine = lines.length > 17 && lines[17] && /^\s*-?\d+/.test(lines[17].trim());
 
-        return hasOriginTime && hasSamplingFreq && hasScaleFactor && hasArrow;
+        return hasOriginTime && hasSamplingFreq && hasScaleFactor && hasDataLine;
     },
 
     /**
@@ -162,15 +162,8 @@ const FileReaderModule = {
                 continue;
             }
 
-            // 行番号と「→」を除去して数値部分のみ抽出
-            const arrowIndex = line.indexOf('→');
-            if (arrowIndex === -1) {
-                continue;
-            }
-
-            const dataStr = line.substring(arrowIndex + 1);
             // 空白で分割して数値を取得
-            const numbers = dataStr.trim().split(/\s+/);
+            const numbers = line.trim().split(/\s+/);
 
             numbers.forEach(numStr => {
                 const num = parseFloat(numStr);
