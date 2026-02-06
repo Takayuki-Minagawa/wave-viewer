@@ -349,8 +349,9 @@ const FileReaderModule = {
      */
     isValidFileType(file) {
         const validExtensions = ['csv', 'txt', 'dat'];
+        const knetExtensions = ['ew', 'ns', 'ud', 'ew2', 'ns2', 'ud2'];
         const extension = this.getExtension(file.name);
-        return validExtensions.includes(extension);
+        return validExtensions.includes(extension) || knetExtensions.includes(extension);
     }
 };
 

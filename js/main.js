@@ -446,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateManualLists();
 
         // チャートのラベルを更新（既にチャートが表示されている場合）
-        if (state.data) {
+        if (state.data && state.unit) {
             updateChartLabels();
         }
     }
