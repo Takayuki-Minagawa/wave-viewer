@@ -14,7 +14,8 @@
     "Analysis": "writable",
     "FileReaderModule": "writable",
     "WaveformChart": "writable",
-    "I18n": "writable"
+    "I18n": "writable",
+    "ResponseSpectrum": "writable"
   },
   "rules": {
     "indent": ["error", 4],

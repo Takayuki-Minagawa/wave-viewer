@@ -223,6 +223,38 @@ const Analysis = {
     },
 
     /**
+     * 加速度データを m/s² に変換
+     * @param {number[]} acceleration - 加速度データ
+     * @param {string} unit - 加速度の単位（m/s², gal, g）
+     * @returns {number[]} - m/s² に変換した加速度
+     */
+    convertAccelerationToMps2(acceleration, unit = 'm/s²') {
+        if (unit === 'gal') {
+            return acceleration.map(val => val / 100); // gal -> m/s²
+        }
+        if (unit === 'g') {
+            return acceleration.map(val => val * 9.80665); // g -> m/s²
+        }
+        return [...acceleration];
+    },
+
+    /**
+     * 加速度データを m/s² から指定単位に変換
+     * @param {number[]} acceleration - m/s² の加速度データ
+     * @param {string} unit - 変換先単位（m/s², gal, g）
+     * @returns {number[]} - 指定単位に変換した加速度
+     */
+    convertAccelerationFromMps2(acceleration, unit = 'm/s²') {
+        if (unit === 'gal') {
+            return acceleration.map(val => val * 100); // m/s² -> gal
+        }
+        if (unit === 'g') {
+            return acceleration.map(val => val / 9.80665); // m/s² -> g
+        }
+        return [...acceleration];
+    },
+
+    /**
      * 加速度から速度を計算
      * @param {number[]} acceleration - 加速度データ
      * @param {number} samplingRate - サンプリング周波数
@@ -231,14 +263,7 @@ const Analysis = {
      */
     accelerationToVelocity(acceleration, samplingRate, unit = 'm/s²') {
         const dt = 1 / samplingRate;
-
-        // 単位をm/s²に変換
-        let accInMPS2 = [...acceleration];
-        if (unit === 'gal') {
-            accInMPS2 = acceleration.map(val => val / 100); // gal -> m/s²
-        } else if (unit === 'g') {
-            accInMPS2 = acceleration.map(val => val * 9.80665); // g -> m/s²
-        }
+        const accInMPS2 = this.convertAccelerationToMps2(acceleration, unit);
 
         // 積分して速度を求める
         return this.integrate(accInMPS2, dt, true);

@@ -19,16 +19,23 @@ document.addEventListener('DOMContentLoaded', () => {
         velocityCanvas: document.getElementById('velocityChart'),
         displacementCanvas: document.getElementById('displacementChart'),
         spectrumCanvas: document.getElementById('spectrumChart'),
+        responseAccelerationCanvas: document.getElementById('responseAccelerationChart'),
+        responseVelocityCanvas: document.getElementById('responseVelocityChart'),
+        responseDisplacementCanvas: document.getElementById('responseDisplacementChart'),
         resetZoomWaveform: document.getElementById('resetZoomWaveform'),
         resetZoomVelocity: document.getElementById('resetZoomVelocity'),
         resetZoomDisplacement: document.getElementById('resetZoomDisplacement'),
         resetZoomSpectrum: document.getElementById('resetZoomSpectrum'),
+        resetZoomResponseAcceleration: document.getElementById('resetZoomResponseAcceleration'),
+        resetZoomResponseVelocity: document.getElementById('resetZoomResponseVelocity'),
+        resetZoomResponseDisplacement: document.getElementById('resetZoomResponseDisplacement'),
         logScale: document.getElementById('logScale'),
         powerSpectrum: document.getElementById('powerSpectrum'),
         // エクスポートボタン
         exportAcceleration: document.getElementById('exportAcceleration'),
         exportVelocity: document.getElementById('exportVelocity'),
         exportDisplacement: document.getElementById('exportDisplacement'),
+        exportResponseSpectra: document.getElementById('exportResponseSpectra'),
         exportAll: document.getElementById('exportAll'),
         // 統計情報
         statCount: document.getElementById('statCount'),
@@ -56,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         frequencies: null,
         amplitudes: null,
         powers: null,
+        responseSpectrum: null,
         samplingRate: null,
         unit: null
     };
@@ -98,6 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.resetZoomSpectrum.addEventListener('click', () => {
             WaveformChart.resetSpectrumZoom();
         });
+        elements.resetZoomResponseAcceleration.addEventListener('click', () => {
+            WaveformChart.resetResponseAccelerationZoom();
+        });
+        elements.resetZoomResponseVelocity.addEventListener('click', () => {
+            WaveformChart.resetResponseVelocityZoom();
+        });
+        elements.resetZoomResponseDisplacement.addEventListener('click', () => {
+            WaveformChart.resetResponseDisplacementZoom();
+        });
 
         // スペクトル表示オプション
         elements.logScale.addEventListener('change', updateSpectrumDisplay);
@@ -107,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.exportAcceleration.addEventListener('click', () => exportData('acceleration'));
         elements.exportVelocity.addEventListener('click', () => exportData('velocity'));
         elements.exportDisplacement.addEventListener('click', () => exportData('displacement'));
+        elements.exportResponseSpectra.addEventListener('click', () => exportData('responseSpectra'));
         elements.exportAll.addEventListener('click', () => exportData('all'));
 
         // 言語切り替えボタン
@@ -248,7 +266,9 @@ document.addEventListener('DOMContentLoaded', () => {
             state.velocity = velocity;
             state.displacement = displacement;
 
-            console.log(`速度最大値: ${Analysis.max(velocity).toExponential(4)} m/s`);
+            const velocityUnit = getVelocityUnit(unit);
+            const velocityValues = convertVelocityFromMps(velocity, velocityUnit);
+            console.log(`速度最大値: ${Analysis.max(velocityValues).toExponential(4)} ${velocityUnit}`);
             console.log(`変位最大値: ${(Analysis.max(displacement) * 100).toFixed(4)} cm`);
 
             // FFT 解析
@@ -258,6 +278,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const powerResult = FFT.powerSpectrum(state.data, samplingRate);
             state.powers = powerResult.powers;
+
+            // 応答スペクトル解析（周期0.02-10s、200分割、h=2/3/5%）
+            state.responseSpectrum = ResponseSpectrum.compute(
+                state.data,
+                samplingRate,
+                unit,
+                {
+                    periodMin: 0.02,
+                    periodMax: 10.0,
+                    periodDivisions: 200,
+                    dampings: [0.02, 0.03, 0.05]
+                }
+            );
 
             // 統計計算
             const stats = Analysis.computeAll(state.data, samplingRate);
@@ -274,7 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
             WaveformChart.createVelocityChart(
                 elements.velocityCanvas,
                 state.velocity,
-                samplingRate
+                samplingRate,
+                velocityUnit
             );
 
             WaveformChart.createDisplacementChart(
@@ -291,6 +325,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.frequencies,
                 isPowerSpectrum ? state.powers : state.amplitudes,
                 { logScale, isPowerSpectrum, unit }
+            );
+
+            WaveformChart.createResponseAccelerationChart(
+                elements.responseAccelerationCanvas,
+                state.responseSpectrum,
+                unit
+            );
+
+            WaveformChart.createResponseVelocityChart(
+                elements.responseVelocityCanvas,
+                state.responseSpectrum,
+                velocityUnit
+            );
+
+            WaveformChart.createResponseDisplacementChart(
+                elements.responseDisplacementCanvas,
+                state.responseSpectrum
             );
 
             // 統計情報表示
@@ -352,8 +403,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * 加速度単位に応じた速度の表示単位を取得
+     * @param {string} accelerationUnit - 加速度単位
+     * @returns {string} - 速度単位（m/s or cm/s）
+     */
+    function getVelocityUnit(accelerationUnit) {
+        return accelerationUnit === 'gal' ? 'cm/s' : 'm/s';
+    }
+
+    /**
+     * 速度データを m/s から指定単位へ変換
+     * @param {number[]} velocityMps - 速度データ[m/s]
+     * @param {string} velocityUnit - 変換先速度単位
+     * @returns {number[]} - 変換後の速度データ
+     */
+    function convertVelocityFromMps(velocityMps, velocityUnit) {
+        if (velocityUnit === 'cm/s') {
+            return velocityMps.map(value => value * 100);
+        }
+        return [...velocityMps];
+    }
+
+    /**
+     * 応答スペクトルをCSVに変換
+     * @param {Object} responseSpectrum - 応答スペクトル
+     * @param {string} accelerationUnit - 加速度単位
+     * @param {string} velocityUnit - 速度単位
+     * @returns {string}
+     */
+    function buildResponseSpectrumCsv(responseSpectrum, accelerationUnit, velocityUnit) {
+        const saByDamping = responseSpectrum.acceleration.map(series =>
+            Analysis.convertAccelerationFromMps2(series, accelerationUnit)
+        );
+        const svByDamping = responseSpectrum.velocity.map(series =>
+            convertVelocityFromMps(series, velocityUnit)
+        );
+        const sdByDamping = responseSpectrum.displacement.map(series =>
+            series.map(value => value * 100)
+        );
+
+        const dampingLabels = responseSpectrum.dampings.map(h => `h${(h * 100).toFixed(0)}pct`);
+        const header = ['Period(s)'];
+
+        dampingLabels.forEach(label => header.push(`Sa_${label}(${accelerationUnit})`));
+        dampingLabels.forEach(label => header.push(`Sv_${label}(${velocityUnit})`));
+        dampingLabels.forEach(label => header.push(`Sd_${label}(cm)`));
+
+        const lines = [header.join(',')];
+
+        for (let i = 0; i < responseSpectrum.periods.length; i++) {
+            const row = [responseSpectrum.periods[i].toFixed(6)];
+
+            for (let j = 0; j < dampingLabels.length; j++) {
+                row.push(saByDamping[j][i].toString());
+            }
+            for (let j = 0; j < dampingLabels.length; j++) {
+                row.push(svByDamping[j][i].toString());
+            }
+            for (let j = 0; j < dampingLabels.length; j++) {
+                row.push(sdByDamping[j][i].toString());
+            }
+
+            lines.push(row.join(','));
+        }
+
+        return lines.join('\n') + '\n';
+    }
+
+    /**
      * データをCSV形式でエクスポート
-     * @param {string} type - データタイプ（acceleration, velocity, displacement, all）
+     * @param {string} type - データタイプ（acceleration, velocity, displacement, responseSpectra, all）
      */
     function exportData(type) {
         if (!state.data) {
@@ -364,6 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let csvContent = '';
         let filename = '';
 
+        const velocityUnit = getVelocityUnit(state.unit);
+        const velocityValues = convertVelocityFromMps(state.velocity, velocityUnit);
         const time = state.data.map((_, index) => index / state.samplingRate);
 
         if (type === 'acceleration') {
@@ -375,9 +496,9 @@ document.addEventListener('DOMContentLoaded', () => {
             filename = 'acceleration.csv';
         } else if (type === 'velocity') {
             // 速度データのみ
-            csvContent = 'Time(s),Velocity(m/s)\n';
-            for (let i = 0; i < state.velocity.length; i++) {
-                csvContent += `${time[i].toFixed(6)},${state.velocity[i]}\n`;
+            csvContent = `Time(s),Velocity(${velocityUnit})\n`;
+            for (let i = 0; i < velocityValues.length; i++) {
+                csvContent += `${time[i].toFixed(6)},${velocityValues[i]}\n`;
             }
             filename = 'velocity.csv';
         } else if (type === 'displacement') {
@@ -387,11 +508,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 csvContent += `${time[i].toFixed(6)},${state.displacement[i]}\n`;
             }
             filename = 'displacement.csv';
+        } else if (type === 'responseSpectra') {
+            if (!state.responseSpectrum) {
+                alert(I18n.t('messages.noDataError'));
+                return;
+            }
+            csvContent = buildResponseSpectrumCsv(state.responseSpectrum, state.unit, velocityUnit);
+            filename = 'response_spectra.csv';
         } else if (type === 'all') {
             // 全データ
-            csvContent = `Time(s),Acceleration(${state.unit}),Velocity(m/s),Displacement(m)\n`;
+            csvContent = `Time(s),Acceleration(${state.unit}),Velocity(${velocityUnit}),Displacement(m)\n`;
             for (let i = 0; i < state.data.length; i++) {
-                csvContent += `${time[i].toFixed(6)},${state.data[i]},${state.velocity[i]},${state.displacement[i]}\n`;
+                csvContent += `${time[i].toFixed(6)},${state.data[i]},${velocityValues[i]},${state.displacement[i]}\n`;
             }
             filename = 'all_data.csv';
         }
@@ -506,6 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function updateChartLabels() {
         const unit = state.unit;
+        const velocityUnit = getVelocityUnit(unit);
 
         // 加速度チャート
         if (WaveformChart.waveformChart) {
@@ -521,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
             WaveformChart.velocityChart.options.scales.x.title.text =
                 `${I18n.t('charts.time')} [sec]`;
             WaveformChart.velocityChart.options.scales.y.title.text =
-                `${I18n.t('charts.velocity')} [m/s]`;
+                `${I18n.t('charts.velocity')} [${velocityUnit}]`;
             WaveformChart.velocityChart.update();
         }
 
@@ -539,6 +668,33 @@ document.addEventListener('DOMContentLoaded', () => {
             WaveformChart.spectrumChart.options.scales.x.title.text =
                 `${I18n.t('charts.frequency')} [Hz]`;
             WaveformChart.spectrumChart.update();
+        }
+
+        // 加速度応答スペクトル
+        if (WaveformChart.responseAccelerationChart) {
+            WaveformChart.responseAccelerationChart.options.scales.x.title.text =
+                `${I18n.t('charts.period')} [sec]`;
+            WaveformChart.responseAccelerationChart.options.scales.y.title.text =
+                `Sa [${unit}]`;
+            WaveformChart.responseAccelerationChart.update();
+        }
+
+        // 速度応答スペクトル
+        if (WaveformChart.responseVelocityChart) {
+            WaveformChart.responseVelocityChart.options.scales.x.title.text =
+                `${I18n.t('charts.period')} [sec]`;
+            WaveformChart.responseVelocityChart.options.scales.y.title.text =
+                `Sv [${velocityUnit}]`;
+            WaveformChart.responseVelocityChart.update();
+        }
+
+        // 変位応答スペクトル
+        if (WaveformChart.responseDisplacementChart) {
+            WaveformChart.responseDisplacementChart.options.scales.x.title.text =
+                `${I18n.t('charts.period')} [sec]`;
+            WaveformChart.responseDisplacementChart.options.scales.y.title.text =
+                'Sd [cm]';
+            WaveformChart.responseDisplacementChart.update();
         }
     }
 

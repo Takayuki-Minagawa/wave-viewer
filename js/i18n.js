@@ -37,14 +37,19 @@ const I18n = {
                 velocity: '速度波形 (Velocity)',
                 displacement: '変位波形 (Displacement)',
                 spectrum: 'フーリエスペクトル (Fourier Spectrum)',
+                responseAcceleration: '加速度応答スペクトル (Acceleration Response Spectrum)',
+                responseVelocity: '速度応答スペクトル (Velocity Response Spectrum)',
+                responseDisplacement: '変位応答スペクトル (Displacement Response Spectrum)',
                 resetBtn: 'リセット',
                 zoomHint: 'マウスホイールでズーム、ドラッグでパン',
                 integrationHint: '積分により計算（ベースライン補正済み）',
                 doubleIntegrationHint: '2重積分により計算（ベースライン補正済み）',
+                responseHint: 'h=2%, 3%, 5% / 周期0.02-10s（対数等間隔）',
                 logScale: '対数スケール',
                 powerSpectrum: 'パワースペクトル',
                 time: '時間',
-                frequency: '周波数'
+                frequency: '周波数',
+                period: '周期'
             },
             // 統計情報
             stats: {
@@ -64,6 +69,7 @@ const I18n = {
                 acceleration: '📥 加速度データ',
                 velocity: '📥 速度データ',
                 displacement: '📥 変位データ',
+                responseSpectra: '📥 応答スペクトル',
                 all: '📥 全データ（CSV）'
             },
             // マニュアル
@@ -72,9 +78,10 @@ const I18n = {
                 quickStart: 'クイックスタート',
                 quickStartContent: [
                     '1. 「ファイル選択」ボタンをクリック、またはファイルをドラッグ&ドロップ',
-                    '2. データが自動的に解析され、波形とスペクトルが表示されます',
+                    '2. データが自動解析され、加速度・速度・変位・フーリエ・応答スペクトルが表示されます',
                     '3. グラフはマウスホイールでズーム、ドラッグでパン可能',
-                    '4. 必要に応じてデータをCSV形式でエクスポート'
+                    '4. 単位がgalの場合、速度は自動的にcm/sで表示されます',
+                    '5. 必要に応じてCSV（応答スペクトル含む）をエクスポート'
                 ],
                 dataFormat: '対応データ形式',
                 dataFormatContent: [
@@ -85,24 +92,27 @@ const I18n = {
                 features: '主な機能',
                 featuresContent: [
                     '【加速度波形】元データの時系列グラフ',
-                    '【速度波形】加速度を積分して自動計算',
+                    '【速度波形】加速度を積分して自動計算（gal入力時はcm/s表示）',
                     '【変位波形】速度を積分して自動計算（2重積分）',
                     '【フーリエスペクトル】FFTによる周波数分析',
+                    '【応答スペクトル】Sa/Sv/Sd（周期0.02-10s、h=2/3/5%）',
                     '【統計情報】最大値、平均、RMS、ピーク周波数等',
-                    '【データエクスポート】各波形データをCSV形式で出力'
+                    '【データエクスポート】各波形・応答スペクトルをCSV形式で出力'
                 ],
                 operations: '操作方法',
                 operationsContent: [
                     '【ズーム】マウスホイールで拡大・縮小',
                     '【パン】ドラッグでグラフを移動',
                     '【リセット】各グラフの「リセット」ボタンで初期表示に戻る',
-                    '【スペクトル設定】対数スケール、パワースペクトルの切替が可能'
+                    '【スペクトル設定】対数スケール、パワースペクトルの切替が可能',
+                    '【応答スペクトル】周期軸（対数）でh=2/3/5%を比較可能'
                 ],
                 notes: '注意事項',
                 notesContent: [
                     '速度・変位はベースライン補正（線形トレンド除去）を適用',
                     '大容量データは自動的にダウンサンプリングして表示',
-                    'K-netデータは単位がgalに自動設定されます',
+                    'K-netデータは単位がgalに自動設定され、速度表示はcm/sになります',
+                    '応答スペクトルCSVはSa/Sv/Sdをh=2/3/5%で出力します',
                     'エクスポートされるCSVファイルはExcel対応（BOM付きUTF-8）'
                 ]
             },
@@ -143,14 +153,19 @@ const I18n = {
                 velocity: 'Velocity Waveform',
                 displacement: 'Displacement Waveform',
                 spectrum: 'Fourier Spectrum',
+                responseAcceleration: 'Acceleration Response Spectrum',
+                responseVelocity: 'Velocity Response Spectrum',
+                responseDisplacement: 'Displacement Response Spectrum',
                 resetBtn: 'Reset',
                 zoomHint: 'Scroll to zoom, drag to pan',
                 integrationHint: 'Calculated by integration (baseline corrected)',
                 doubleIntegrationHint: 'Calculated by double integration (baseline corrected)',
+                responseHint: 'h=2%, 3%, 5% / Period 0.02-10s (log-spaced)',
                 logScale: 'Logarithmic Scale',
                 powerSpectrum: 'Power Spectrum',
                 time: 'Time',
-                frequency: 'Frequency'
+                frequency: 'Frequency',
+                period: 'Period'
             },
             // Statistics
             stats: {
@@ -170,6 +185,7 @@ const I18n = {
                 acceleration: '📥 Acceleration',
                 velocity: '📥 Velocity',
                 displacement: '📥 Displacement',
+                responseSpectra: '📥 Response Spectra',
                 all: '📥 All Data (CSV)'
             },
             // Manual
@@ -178,9 +194,10 @@ const I18n = {
                 quickStart: 'Quick Start',
                 quickStartContent: [
                     '1. Click "Select File" button or drag & drop a file',
-                    '2. Data is automatically analyzed and waveforms/spectrum are displayed',
+                    '2. Data is auto-analyzed and acceleration/velocity/displacement/Fourier/response spectra are displayed',
                     '3. Scroll to zoom, drag to pan on graphs',
-                    '4. Export data to CSV format as needed'
+                    '4. If acceleration unit is gal, velocity is shown in cm/s',
+                    '5. Export CSV files as needed (including response spectra)'
                 ],
                 dataFormat: 'Supported Data Formats',
                 dataFormatContent: [
@@ -191,24 +208,27 @@ const I18n = {
                 features: 'Key Features',
                 featuresContent: [
                     '[Acceleration] Time-series graph of raw data',
-                    '[Velocity] Auto-calculated by integrating acceleration',
+                    '[Velocity] Auto-calculated by integrating acceleration (cm/s when input is gal)',
                     '[Displacement] Auto-calculated by double integration',
                     '[Fourier Spectrum] Frequency analysis using FFT',
+                    '[Response Spectra] Sa/Sv/Sd (Period 0.02-10s, h=2/3/5%)',
                     '[Statistics] Max, mean, RMS, peak frequency, etc.',
-                    '[Export] Export waveform data in CSV format'
+                    '[Export] Export waveform and response spectra in CSV format'
                 ],
                 operations: 'Operations',
                 operationsContent: [
                     '[Zoom] Scroll mouse wheel to zoom in/out',
                     '[Pan] Drag to move the graph',
                     '[Reset] Click "Reset" button to restore initial view',
-                    '[Spectrum] Toggle logarithmic scale and power spectrum'
+                    '[Spectrum] Toggle logarithmic scale and power spectrum',
+                    '[Response Spectra] Compare h=2/3/5% on logarithmic period axis'
                 ],
                 notes: 'Notes',
                 notesContent: [
                     'Velocity & displacement use baseline correction (linear detrending)',
                     'Large datasets are automatically downsampled for display',
-                    'K-net data units are automatically set to gal',
+                    'K-net data units are automatically set to gal and velocity is displayed in cm/s',
+                    'Response spectra CSV exports Sa/Sv/Sd for h=2/3/5%',
                     'Exported CSV files are Excel-compatible (UTF-8 with BOM)'
                 ]
             },

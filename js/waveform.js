@@ -7,6 +7,9 @@ const WaveformChart = {
     velocityChart: null,
     displacementChart: null,
     spectrumChart: null,
+    responseAccelerationChart: null,
+    responseVelocityChart: null,
+    responseDisplacementChart: null,
 
     /**
      * Chart.js のデフォルト設定
@@ -122,8 +125,9 @@ const WaveformChart = {
      * @param {HTMLCanvasElement} canvas - キャンバス要素
      * @param {number[]} data - 速度データ（m/s）
      * @param {number} samplingRate - サンプリング周波数
+     * @param {string} velocityUnit - 速度表示単位（m/s or cm/s）
      */
-    createVelocityChart(canvas, data, samplingRate) {
+    createVelocityChart(canvas, data, samplingRate, velocityUnit = 'm/s') {
         // 既存のチャートを破棄
         if (this.velocityChart) {
             this.velocityChart.destroy();
@@ -132,8 +136,13 @@ const WaveformChart = {
         // 時間軸を生成
         const timeData = data.map((_, index) => index / samplingRate);
 
+        // 表示単位に変換
+        const displayData = velocityUnit === 'cm/s'
+            ? data.map(value => value * 100)
+            : data;
+
         // データポイントが多い場合はダウンサンプリング
-        const { labels, values } = this.downsample(timeData, data, 2000);
+        const { labels, values } = this.downsample(timeData, displayData, 2000);
 
         this.velocityChart = new Chart(canvas, {
             type: 'line',
@@ -167,7 +176,7 @@ const WaveformChart = {
                     y: {
                         title: {
                             display: true,
-                            text: `${I18n.t('charts.velocity')} [m/s]`
+                            text: `${I18n.t('charts.velocity')} [${velocityUnit}]`
                         }
                     }
                 },
@@ -176,7 +185,7 @@ const WaveformChart = {
                     tooltip: {
                         callbacks: {
                             label: (context) => {
-                                return `${context.parsed.y.toFixed(6)} m/s`;
+                                return `${context.parsed.y.toFixed(6)} ${velocityUnit}`;
                             },
                             title: (tooltipItems) => {
                                 return `時間: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
@@ -368,6 +377,189 @@ const WaveformChart = {
     },
 
     /**
+     * 加速度応答スペクトルチャートを作成
+     * @param {HTMLCanvasElement} canvas - キャンバス要素
+     * @param {Object} responseSpectrum - 応答スペクトルデータ
+     * @param {string} unit - 表示単位（m/s², gal, g）
+     */
+    createResponseAccelerationChart(canvas, responseSpectrum, unit = 'm/s²') {
+        if (this.responseAccelerationChart) {
+            this.responseAccelerationChart.destroy();
+        }
+
+        const spectraInUnit = responseSpectrum.acceleration.map(series =>
+            Analysis.convertAccelerationFromMps2(series, unit)
+        );
+
+        this.responseAccelerationChart = this._createResponseSpectrumChart(
+            canvas,
+            responseSpectrum.periods,
+            spectraInUnit,
+            responseSpectrum.dampings,
+            {
+                yAxisLabel: `Sa [${unit}]`,
+                valueUnit: unit,
+                precision: 5
+            }
+        );
+
+        return this.responseAccelerationChart;
+    },
+
+    /**
+     * 速度応答スペクトルチャートを作成
+     * @param {HTMLCanvasElement} canvas - キャンバス要素
+     * @param {Object} responseSpectrum - 応答スペクトルデータ
+     * @param {string} velocityUnit - 速度表示単位（m/s or cm/s）
+     */
+    createResponseVelocityChart(canvas, responseSpectrum, velocityUnit = 'm/s') {
+        if (this.responseVelocityChart) {
+            this.responseVelocityChart.destroy();
+        }
+
+        const spectraInUnit = velocityUnit === 'cm/s'
+            ? responseSpectrum.velocity.map(series => series.map(value => value * 100))
+            : responseSpectrum.velocity;
+
+        this.responseVelocityChart = this._createResponseSpectrumChart(
+            canvas,
+            responseSpectrum.periods,
+            spectraInUnit,
+            responseSpectrum.dampings,
+            {
+                yAxisLabel: `Sv [${velocityUnit}]`,
+                valueUnit: velocityUnit,
+                precision: 5
+            }
+        );
+
+        return this.responseVelocityChart;
+    },
+
+    /**
+     * 変位応答スペクトルチャートを作成
+     * @param {HTMLCanvasElement} canvas - キャンバス要素
+     * @param {Object} responseSpectrum - 応答スペクトルデータ
+     */
+    createResponseDisplacementChart(canvas, responseSpectrum) {
+        if (this.responseDisplacementChart) {
+            this.responseDisplacementChart.destroy();
+        }
+
+        const spectraInCm = responseSpectrum.displacement.map(series =>
+            series.map(value => value * 100)
+        );
+
+        this.responseDisplacementChart = this._createResponseSpectrumChart(
+            canvas,
+            responseSpectrum.periods,
+            spectraInCm,
+            responseSpectrum.dampings,
+            {
+                yAxisLabel: 'Sd [cm]',
+                valueUnit: 'cm',
+                precision: 4
+            }
+        );
+
+        return this.responseDisplacementChart;
+    },
+
+    /**
+     * 複数減衰定数の応答スペクトルを描画
+     * @param {HTMLCanvasElement} canvas - キャンバス要素
+     * @param {number[]} periods - 周期配列 [sec]
+     * @param {number[][]} spectraByDamping - 減衰ごとのスペクトル値
+     * @param {number[]} dampings - 減衰定数配列
+     * @param {Object} options - 描画オプション
+     * @returns {Chart}
+     */
+    _createResponseSpectrumChart(canvas, periods, spectraByDamping, dampings, options = {}) {
+        const {
+            yAxisLabel = '',
+            valueUnit = '',
+            precision = 5
+        } = options;
+
+        const colors = [
+            { border: 'rgba(220, 53, 69, 1)', background: 'rgba(220, 53, 69, 0.12)' },
+            { border: 'rgba(40, 167, 69, 1)', background: 'rgba(40, 167, 69, 0.12)' },
+            { border: 'rgba(74, 144, 217, 1)', background: 'rgba(74, 144, 217, 0.12)' }
+        ];
+
+        const datasets = dampings.map((damping, index) => {
+            const color = colors[index % colors.length];
+            const values = spectraByDamping[index] || [];
+            return {
+                label: `h=${(damping * 100).toFixed(0)}%`,
+                data: periods.map((period, i) => ({
+                    x: period,
+                    y: values[i] ?? null
+                })),
+                borderColor: color.border,
+                backgroundColor: color.background,
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                tension: 0
+            };
+        });
+
+        return new Chart(canvas, {
+            type: 'line',
+            data: {
+                datasets
+            },
+            options: {
+                ...this.defaultOptions,
+                scales: {
+                    x: {
+                        type: 'logarithmic',
+                        min: periods[0],
+                        max: periods[periods.length - 1],
+                        title: {
+                            display: true,
+                            text: `${I18n.t('charts.period')} [sec]`
+                        },
+                        ticks: {
+                            callback: (value) => {
+                                const num = Number(value);
+                                if (!Number.isFinite(num)) {
+                                    return value;
+                                }
+                                return num >= 1 ? num.toFixed(1) : num.toFixed(2);
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: yAxisLabel
+                        }
+                    }
+                },
+                plugins: {
+                    ...this.defaultOptions.plugins,
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(precision)} ${valueUnit}`;
+                            },
+                            title: (tooltipItems) => {
+                                return `${I18n.t('charts.period')}: ${tooltipItems[0].parsed.x.toFixed(3)} sec`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    /**
      * 0.5Hz以上の最大値を取得
      * @param {number[]} frequencies - 周波数配列
      * @param {number[]} amplitudes - 振幅配列
@@ -472,6 +664,33 @@ const WaveformChart = {
     },
 
     /**
+     * 加速度応答スペクトルチャートをリセット
+     */
+    resetResponseAccelerationZoom() {
+        if (this.responseAccelerationChart) {
+            this.responseAccelerationChart.resetZoom();
+        }
+    },
+
+    /**
+     * 速度応答スペクトルチャートをリセット
+     */
+    resetResponseVelocityZoom() {
+        if (this.responseVelocityChart) {
+            this.responseVelocityChart.resetZoom();
+        }
+    },
+
+    /**
+     * 変位応答スペクトルチャートをリセット
+     */
+    resetResponseDisplacementZoom() {
+        if (this.responseDisplacementChart) {
+            this.responseDisplacementChart.resetZoom();
+        }
+    },
+
+    /**
      * スペクトルチャートを更新
      * @param {number[]} frequencies - 周波数配列
      * @param {number[]} amplitudes - 振幅配列
@@ -536,6 +755,18 @@ const WaveformChart = {
         if (this.spectrumChart) {
             this.spectrumChart.destroy();
             this.spectrumChart = null;
+        }
+        if (this.responseAccelerationChart) {
+            this.responseAccelerationChart.destroy();
+            this.responseAccelerationChart = null;
+        }
+        if (this.responseVelocityChart) {
+            this.responseVelocityChart.destroy();
+            this.responseVelocityChart = null;
+        }
+        if (this.responseDisplacementChart) {
+            this.responseDisplacementChart.destroy();
+            this.responseDisplacementChart = null;
         }
     }
 };

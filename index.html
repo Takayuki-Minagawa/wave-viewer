@@ -139,6 +139,48 @@
                     <canvas id="spectrumChart"></canvas>
                 </div>
             </div>
+
+            <!-- 加速度応答スペクトル -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🟥 <span data-i18n="charts.responseAcceleration">加速度応答スペクトル</span></h2>
+                    <div class="chart-controls">
+                        <button type="button" id="resetZoomResponseAcceleration" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="responseAccelerationChart"></canvas>
+                </div>
+                <p class="chart-hint" data-i18n="charts.responseHint">h=2%, 3%, 5% / 周期0.02-10s（対数等間隔）</p>
+            </div>
+
+            <!-- 速度応答スペクトル -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🟩 <span data-i18n="charts.responseVelocity">速度応答スペクトル</span></h2>
+                    <div class="chart-controls">
+                        <button type="button" id="resetZoomResponseVelocity" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="responseVelocityChart"></canvas>
+                </div>
+                <p class="chart-hint" data-i18n="charts.responseHint">h=2%, 3%, 5% / 周期0.02-10s（対数等間隔）</p>
+            </div>
+
+            <!-- 変位応答スペクトル -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2>🟧 <span data-i18n="charts.responseDisplacement">変位応答スペクトル</span></h2>
+                    <div class="chart-controls">
+                        <button type="button" id="resetZoomResponseDisplacement" class="btn btn-small" data-i18n="charts.resetBtn">リセット</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="responseDisplacementChart"></canvas>
+                </div>
+                <p class="chart-hint" data-i18n="charts.responseHint">h=2%, 3%, 5% / 周期0.02-10s（対数等間隔）</p>
+            </div>
         </section>
 
         <!-- 統計情報 -->
@@ -200,6 +242,9 @@
                 <button type="button" id="exportDisplacement" class="btn btn-secondary">
                     <span data-i18n="export.displacement">📥 変位データ</span>
                 </button>
+                <button type="button" id="exportResponseSpectra" class="btn btn-secondary">
+                    <span data-i18n="export.responseSpectra">📥 応答スペクトル</span>
+                </button>
                 <button type="button" id="exportAll" class="btn btn-primary">
                     <span data-i18n="export.all">📥 全データ（CSV）</span>
                 </button>
@@ -249,6 +294,7 @@
     <script src="js/fft.js"></script>
     <script src="js/analysis.js"></script>
     <script src="js/fileReader.js"></script>
+    <script src="js/responseSpectrum.js"></script>
     <script src="js/waveform.js"></script>
     <script src="js/main.js"></script>
 </body>
