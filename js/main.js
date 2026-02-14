@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         amplitudes: null,
         powers: null,
         responseSpectrum: null,
+        responseWorker: null,
         samplingRate: null,
         unit: null
     };
@@ -199,6 +200,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * 応答スペクトルワーカーを停止
+     */
+    function terminateResponseWorker() {
+        if (state.responseWorker) {
+            state.responseWorker.terminate();
+            state.responseWorker = null;
+        }
+    }
+
+    /**
+     * 応答スペクトルを非同期計算（Worker）
+     * @param {number[]} acceleration - 加速度データ
+     * @param {number} samplingRate - サンプリング周波数
+     * @param {string} unit - 加速度単位
+     * @param {Object} config - 計算設定
+     * @returns {Promise<Object>}
+     */
+    function computeResponseSpectrumAsync(acceleration, samplingRate, unit, config) {
+        if (typeof Worker === 'undefined') {
+            return Promise.resolve(
+                ResponseSpectrum.compute(acceleration, samplingRate, unit, config)
+            );
+        }
+
+        terminateResponseWorker();
+
+        return new Promise((resolve, reject) => {
+            const worker = new Worker('js/responseSpectrumWorker.js');
+            state.responseWorker = worker;
+
+            worker.onmessage = (event) => {
+                if (state.responseWorker === worker) {
+                    state.responseWorker = null;
+                }
+                worker.terminate();
+
+                if (event.data && event.data.ok) {
+                    resolve(event.data.result);
+                    return;
+                }
+                reject(new Error(event.data?.error || '応答スペクトル計算に失敗しました'));
+            };
+
+            worker.onerror = (event) => {
+                if (state.responseWorker === worker) {
+                    state.responseWorker = null;
+                }
+                worker.terminate();
+                reject(new Error(event.message || '応答スペクトルワーカーでエラーが発生しました'));
+            };
+
+            worker.postMessage({
+                acceleration,
+                samplingRate,
+                unit,
+                config
+            });
+        });
+    }
+
+    /**
      * 解析を実行
      */
     async function runAnalysis() {
@@ -280,17 +342,28 @@ document.addEventListener('DOMContentLoaded', () => {
             state.powers = powerResult.powers;
 
             // 応答スペクトル解析（周期0.02-10s、200分割、h=2/3/5%）
-            state.responseSpectrum = ResponseSpectrum.compute(
-                state.data,
-                samplingRate,
-                unit,
-                {
-                    periodMin: 0.02,
-                    periodMax: 10.0,
-                    periodDivisions: 200,
-                    dampings: [0.02, 0.03, 0.05]
-                }
-            );
+            const responseConfig = {
+                periodMin: 0.02,
+                periodMax: 10.0,
+                periodDivisions: 200,
+                dampings: [0.02, 0.03, 0.05]
+            };
+            try {
+                state.responseSpectrum = await computeResponseSpectrumAsync(
+                    state.data,
+                    samplingRate,
+                    unit,
+                    responseConfig
+                );
+            } catch (workerError) {
+                console.warn('応答スペクトルワーカーに失敗したため同期計算にフォールバックします', workerError);
+                state.responseSpectrum = ResponseSpectrum.compute(
+                    state.data,
+                    samplingRate,
+                    unit,
+                    responseConfig
+                );
+            }
 
             // 統計計算
             const stats = Analysis.computeAll(state.data, samplingRate);
@@ -357,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(I18n.t('messages.analysisError'), error);
             alert(I18n.t('messages.analysisError') + error.message);
         } finally {
+            terminateResponseWorker();
             elements.analyzeBtn.disabled = false;
             elements.analyzeBtn.querySelector('span').textContent = I18n.t('controls.analyzeBtn');
         }

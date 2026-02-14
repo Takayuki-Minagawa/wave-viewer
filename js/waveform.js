@@ -109,7 +109,7 @@ const WaveformChart = {
                                 return `${context.parsed.y.toFixed(4)} ${unit}`;
                             },
                             title: (tooltipItems) => {
-                                return `時間: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
+                                return `${I18n.t('charts.time')}: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
                             }
                         }
                     }
@@ -188,7 +188,7 @@ const WaveformChart = {
                                 return `${context.parsed.y.toFixed(6)} ${velocityUnit}`;
                             },
                             title: (tooltipItems) => {
-                                return `時間: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
+                                return `${I18n.t('charts.time')}: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
                             }
                         }
                     }
@@ -264,7 +264,7 @@ const WaveformChart = {
                                 return `${context.parsed.y.toFixed(4)} cm`;
                             },
                             title: (tooltipItems) => {
-                                return `時間: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
+                                return `${I18n.t('charts.time')}: ${tooltipItems[0].parsed.x.toFixed(4)} sec`;
                             }
                         }
                     }
@@ -365,7 +365,7 @@ const WaveformChart = {
                                 return `${originalValue.toExponential(4)}`;
                             },
                             title: (tooltipItems) => {
-                                return `周波数: ${tooltipItems[0].parsed.x.toFixed(2)} Hz`;
+                                return `${I18n.t('charts.frequency')}: ${tooltipItems[0].parsed.x.toFixed(2)} Hz`;
                             }
                         }
                     }

@@ -37,7 +37,7 @@ const ResponseSpectrum = {
         );
         const dampings = [...options.dampings];
         const dt = 1 / samplingRate;
-        const groundAcceleration = Analysis.convertAccelerationToMps2(acceleration, unit);
+        const groundAcceleration = this._convertAccelerationToMps2(acceleration, unit);
 
         const accelerationSpectra = [];
         const velocitySpectra = [];
@@ -84,6 +84,22 @@ const ResponseSpectrum = {
         }
 
         return periods;
+    },
+
+    /**
+     * 加速度データを m/s² に変換
+     * @param {number[]} acceleration - 加速度データ
+     * @param {string} unit - 加速度単位（m/s², gal, g）
+     * @returns {number[]}
+     */
+    _convertAccelerationToMps2(acceleration, unit = 'm/s²') {
+        if (unit === 'gal') {
+            return acceleration.map(value => value / 100);
+        }
+        if (unit === 'g') {
+            return acceleration.map(value => value * 9.80665);
+        }
+        return [...acceleration];
     },
 
     /**
@@ -191,5 +207,6 @@ const ResponseSpectrum = {
     }
 };
 
-// グローバルにエクスポート
-window.ResponseSpectrum = ResponseSpectrum;
+// グローバルにエクスポート（window/worker両対応）
+const responseSpectrumGlobal = typeof window !== 'undefined' ? window : self;
+responseSpectrumGlobal.ResponseSpectrum = ResponseSpectrum;
