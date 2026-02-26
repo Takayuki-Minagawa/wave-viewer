@@ -295,8 +295,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log(`サンプリング周波数を自動設定: ${samplingRate} Hz`);
                 }
 
-                // K-netデータは常にgal単位
-                unit = 'gal';
+                // K-netデータは常にcm/s2（= gal）単位
+                unit = 'cm/s2';
                 elements.dataUnit.value = unit;
 
                 // ヘッダースキップは不要（自動処理される）
@@ -477,12 +477,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * gal相当（cm/s2, cm/s²）単位かどうか
+     * @param {string} accelerationUnit - 加速度単位
+     * @returns {boolean}
+     */
+    function isCmPerSec2Unit(accelerationUnit) {
+        return accelerationUnit === 'cm/s2'
+            || accelerationUnit === 'cm/s²'
+            || accelerationUnit === 'gal';
+    }
+
+    /**
      * 加速度単位に応じた速度の表示単位を取得
      * @param {string} accelerationUnit - 加速度単位
      * @returns {string} - 速度単位（m/s or cm/s）
      */
     function getVelocityUnit(accelerationUnit) {
-        return accelerationUnit === 'gal' ? 'cm/s' : 'm/s';
+        return isCmPerSec2Unit(accelerationUnit) ? 'cm/s' : 'm/s';
     }
 
     /**

@@ -17,11 +17,11 @@ const ResponseSpectrum = {
      * 応答スペクトルを計算
      * @param {number[]} acceleration - 加速度時刻歴
      * @param {number} samplingRate - サンプリング周波数 [Hz]
-     * @param {string} unit - 入力加速度単位（m/s², gal, g）
+     * @param {string} unit - 入力加速度単位（m/s², cm/s2[=gal], g）
      * @param {Object} config - 計算条件
      * @returns {Object}
      */
-    compute(acceleration, samplingRate, unit = 'm/s²', config = {}) {
+    compute(acceleration, samplingRate, unit = 'cm/s2', config = {}) {
         if (!Array.isArray(acceleration) || acceleration.length < 2) {
             throw new Error('応答スペクトル計算には2点以上の加速度データが必要です');
         }
@@ -89,17 +89,28 @@ const ResponseSpectrum = {
     /**
      * 加速度データを m/s² に変換
      * @param {number[]} acceleration - 加速度データ
-     * @param {string} unit - 加速度単位（m/s², gal, g）
+     * @param {string} unit - 加速度単位（m/s², cm/s2[=gal], g）
      * @returns {number[]}
      */
-    _convertAccelerationToMps2(acceleration, unit = 'm/s²') {
-        if (unit === 'gal') {
+    _convertAccelerationToMps2(acceleration, unit = 'cm/s2') {
+        if (this._isCmPerSec2Unit(unit)) {
             return acceleration.map(value => value / 100);
         }
         if (unit === 'g') {
             return acceleration.map(value => value * 9.80665);
         }
         return [...acceleration];
+    },
+
+    /**
+     * gal相当（cm/s2, cm/s²）単位かどうか
+     * @param {string} unit - 加速度単位
+     * @returns {boolean}
+     */
+    _isCmPerSec2Unit(unit) {
+        return unit === 'cm/s2'
+            || unit === 'cm/s²'
+            || unit === 'gal';
     },
 
     /**

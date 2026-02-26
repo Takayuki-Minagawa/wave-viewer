@@ -223,13 +223,24 @@ const Analysis = {
     },
 
     /**
+     * gal相当（cm/s2, cm/s²）単位かどうか
+     * @param {string} unit - 加速度単位
+     * @returns {boolean}
+     */
+    isCmPerSec2Unit(unit) {
+        return unit === 'cm/s2'
+            || unit === 'cm/s²'
+            || unit === 'gal';
+    },
+
+    /**
      * 加速度データを m/s² に変換
      * @param {number[]} acceleration - 加速度データ
-     * @param {string} unit - 加速度の単位（m/s², gal, g）
+     * @param {string} unit - 加速度の単位（m/s², cm/s2[=gal], g）
      * @returns {number[]} - m/s² に変換した加速度
      */
-    convertAccelerationToMps2(acceleration, unit = 'm/s²') {
-        if (unit === 'gal') {
+    convertAccelerationToMps2(acceleration, unit = 'cm/s2') {
+        if (this.isCmPerSec2Unit(unit)) {
             return acceleration.map(val => val / 100); // gal -> m/s²
         }
         if (unit === 'g') {
@@ -241,11 +252,11 @@ const Analysis = {
     /**
      * 加速度データを m/s² から指定単位に変換
      * @param {number[]} acceleration - m/s² の加速度データ
-     * @param {string} unit - 変換先単位（m/s², gal, g）
+     * @param {string} unit - 変換先単位（m/s², cm/s2[=gal], g）
      * @returns {number[]} - 指定単位に変換した加速度
      */
-    convertAccelerationFromMps2(acceleration, unit = 'm/s²') {
-        if (unit === 'gal') {
+    convertAccelerationFromMps2(acceleration, unit = 'cm/s2') {
+        if (this.isCmPerSec2Unit(unit)) {
             return acceleration.map(val => val * 100); // m/s² -> gal
         }
         if (unit === 'g') {
@@ -258,10 +269,10 @@ const Analysis = {
      * 加速度から速度を計算
      * @param {number[]} acceleration - 加速度データ
      * @param {number} samplingRate - サンプリング周波数
-     * @param {string} unit - 加速度の単位（m/s², gal, g）
+     * @param {string} unit - 加速度の単位（m/s², cm/s2[=gal], g）
      * @returns {number[]} - 速度データ（m/s）
      */
-    accelerationToVelocity(acceleration, samplingRate, unit = 'm/s²') {
+    accelerationToVelocity(acceleration, samplingRate, unit = 'cm/s2') {
         const dt = 1 / samplingRate;
         const accInMPS2 = this.convertAccelerationToMps2(acceleration, unit);
 
@@ -287,7 +298,7 @@ const Analysis = {
      * @param {string} unit - 加速度の単位
      * @returns {Object} - { velocity, displacement }
      */
-    computeVelocityAndDisplacement(acceleration, samplingRate, unit = 'm/s²') {
+    computeVelocityAndDisplacement(acceleration, samplingRate, unit = 'cm/s2') {
         const velocity = this.accelerationToVelocity(acceleration, samplingRate, unit);
         const displacement = this.velocityToDisplacement(velocity, samplingRate);
 

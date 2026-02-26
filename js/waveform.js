@@ -286,7 +286,7 @@ const WaveformChart = {
         const {
             logScale = false,
             isPowerSpectrum = false,
-            unit = 'm/s²'
+            unit = 'cm/s2'
         } = options;
 
         // 既存のチャートを破棄
@@ -380,9 +380,9 @@ const WaveformChart = {
      * 加速度応答スペクトルチャートを作成
      * @param {HTMLCanvasElement} canvas - キャンバス要素
      * @param {Object} responseSpectrum - 応答スペクトルデータ
-     * @param {string} unit - 表示単位（m/s², gal, g）
+     * @param {string} unit - 表示単位（m/s², cm/s2[=gal], g）
      */
-    createResponseAccelerationChart(canvas, responseSpectrum, unit = 'm/s²') {
+    createResponseAccelerationChart(canvas, responseSpectrum, unit = 'cm/s2') {
         if (this.responseAccelerationChart) {
             this.responseAccelerationChart.destroy();
         }
@@ -704,7 +704,7 @@ const WaveformChart = {
         const {
             logScale = false,
             isPowerSpectrum = false,
-            unit = 'm/s²'
+            unit = 'cm/s2'
         } = options;
 
         const startIndex = 1;

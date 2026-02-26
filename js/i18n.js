@@ -80,7 +80,7 @@ const I18n = {
                     '1. 「ファイル選択」ボタンをクリック、またはファイルをドラッグ&ドロップ',
                     '2. データが自動解析され、加速度・速度・変位・フーリエ・応答スペクトルが表示されます',
                     '3. グラフはマウスホイールでズーム、ドラッグでパン可能',
-                    '4. 単位がgalの場合、速度は自動的にcm/sで表示されます',
+                    '4. 単位がcm/s2の場合、速度は自動的にcm/sで表示されます',
                     '5. 必要に応じてCSV（応答スペクトル含む）をエクスポート'
                 ],
                 dataFormat: '対応データ形式',
@@ -92,7 +92,7 @@ const I18n = {
                 features: '主な機能',
                 featuresContent: [
                     '【加速度波形】元データの時系列グラフ',
-                    '【速度波形】加速度を積分して自動計算（gal入力時はcm/s表示）',
+                    '【速度波形】加速度を積分して自動計算（cm/s2入力時はcm/s表示）',
                     '【変位波形】速度を積分して自動計算（2重積分）',
                     '【フーリエスペクトル】FFTによる周波数分析',
                     '【応答スペクトル】Sa/Sv/Sd（周期0.02-10s、h=2/3/5%）',
@@ -111,7 +111,7 @@ const I18n = {
                 notesContent: [
                     '速度・変位はベースライン補正（線形トレンド除去）を適用',
                     '大容量データは自動的にダウンサンプリングして表示',
-                    'K-netデータは単位がgalに自動設定され、速度表示はcm/sになります',
+                    'K-netデータは単位がcm/s2に自動設定され、速度表示はcm/sになります',
                     '応答スペクトルCSVはSa/Sv/Sdをh=2/3/5%で出力します',
                     'エクスポートされるCSVファイルはExcel対応（BOM付きUTF-8）'
                 ]
@@ -196,7 +196,7 @@ const I18n = {
                     '1. Click "Select File" button or drag & drop a file',
                     '2. Data is auto-analyzed and acceleration/velocity/displacement/Fourier/response spectra are displayed',
                     '3. Scroll to zoom, drag to pan on graphs',
-                    '4. If acceleration unit is gal, velocity is shown in cm/s',
+                    '4. If acceleration unit is cm/s2, velocity is shown in cm/s',
                     '5. Export CSV files as needed (including response spectra)'
                 ],
                 dataFormat: 'Supported Data Formats',
@@ -208,7 +208,7 @@ const I18n = {
                 features: 'Key Features',
                 featuresContent: [
                     '[Acceleration] Time-series graph of raw data',
-                    '[Velocity] Auto-calculated by integrating acceleration (cm/s when input is gal)',
+                    '[Velocity] Auto-calculated by integrating acceleration (cm/s when input is cm/s2)',
                     '[Displacement] Auto-calculated by double integration',
                     '[Fourier Spectrum] Frequency analysis using FFT',
                     '[Response Spectra] Sa/Sv/Sd (Period 0.02-10s, h=2/3/5%)',
@@ -227,7 +227,7 @@ const I18n = {
                 notesContent: [
                     'Velocity & displacement use baseline correction (linear detrending)',
                     'Large datasets are automatically downsampled for display',
-                    'K-net data units are automatically set to gal and velocity is displayed in cm/s',
+                    'K-net data units are automatically set to cm/s2 and velocity is displayed in cm/s',
                     'Response spectra CSV exports Sa/Sv/Sd for h=2/3/5%',
                     'Exported CSV files are Excel-compatible (UTF-8 with BOM)'
                 ]
