@@ -69,8 +69,9 @@ wave-viewer/
 │   ├── fileReader.js   # ファイル読み込み（K-net対応）
 │   ├── waveform.js     # 波形描画（Chart.js）
 │   ├── fft.js          # フーリエ変換
-│   ├── analysis.js     # 統計分析
-│   ├── responseSpectrum.js # 応答スペクトル解析
+│   ├── analysis.js     # 統計分析・単位変換
+│   ├── responseSpectrum.js       # 応答スペクトル解析
+│   ├── responseSpectrumWorker.js # 応答スペクトル計算Worker
 │   └── i18n.js         # 多言語対応（国際化）
 ├── sample/
 │   ├── sample_data.csv # サンプルデータ（1列形式）
@@ -212,8 +213,8 @@ Scale Factor      7845(gal)/8223790
 ## 🛠️ 技術スタック
 
 - **HTML5 / CSS3 / JavaScript**（Vanilla JS）
-- **Chart.js** - グラフ描画ライブラリ
-- **chartjs-plugin-zoom** - ズーム・パン機能
+- **Chart.js 4.5.1** - グラフ描画ライブラリ（SRI付きCDN）
+- **chartjs-plugin-zoom 2.2.0** - ズーム・パン機能（SRI付きCDN）
 - **FFT** - Cooley-Tukey アルゴリズム（自作実装）
 
 ## 📝 ライセンス
@@ -221,6 +222,20 @@ Scale Factor      7845(gal)/8223790
 MIT License
 
 ## 🔧 更新履歴
+
+### v2.3.3 (2026-02-26)
+
+- ✅ **大規模データ対応（クラッシュ修正）**
+  - `Math.max/min` のスプレッド演算子をループベースに変更し、65,000点超のデータでもクラッシュしないよう修正
+- ✅ **メモリリーク修正**
+  - データエクスポート時に `URL.revokeObjectURL()` を追加し、Blob URLのメモリリークを解消
+- ✅ **CDNライブラリのバージョン固定・SRI追加**
+  - Chart.js 4.5.1 / chartjs-plugin-zoom 2.2.0 にバージョン固定
+  - Subresource Integrity (SRI) ハッシュを付与しセキュリティ強化
+- ✅ **入力バリデーション改善**
+  - サンプリング周波数に0や不正な値を入力した場合にエラーメッセージを表示するよう変更
+- ✅ **単位変換ロジックの一元化**
+  - 3ファイルに散在していた単位変換ロジックを `analysis.js` に統合し保守性を向上
 
 ### v2.3.2 (2026-02-26)
 
@@ -292,7 +307,6 @@ MIT License
 
 - [ ] フィルタリング機能（ローパス/ハイパス/バンドパス）
 - [ ] 窓関数の選択（ハミング、ブラックマン等）
-- [ ] データエクスポート機能（CSV/JSON）
 - [ ] グラフ画像保存機能（PNG/SVG）
 - [ ] 複数ファイルの比較表示
 - [ ] 応答スペクトルの算定条件カスタマイズ（周期範囲・分割数・減衰）
