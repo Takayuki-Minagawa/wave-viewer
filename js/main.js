@@ -275,7 +275,11 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.analyzeBtn.querySelector('span').textContent = I18n.t('controls.analyzing');
 
             // パラメータ取得
-            let samplingRate = parseFloat(elements.samplingRate.value) || 100;
+            let samplingRate = parseFloat(elements.samplingRate.value);
+            if (!Number.isFinite(samplingRate) || samplingRate <= 0) {
+                alert(I18n.t('messages.invalidSamplingRate'));
+                return;
+            }
             const skipHeader = parseInt(elements.skipHeader.value) || 0;
             let unit = elements.dataUnit.value;
 
@@ -477,23 +481,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * gal相当（cm/s2, cm/s²）単位かどうか
-     * @param {string} accelerationUnit - 加速度単位
-     * @returns {boolean}
-     */
-    function isCmPerSec2Unit(accelerationUnit) {
-        return accelerationUnit === 'cm/s2'
-            || accelerationUnit === 'cm/s²'
-            || accelerationUnit === 'gal';
-    }
-
-    /**
      * 加速度単位に応じた速度の表示単位を取得
      * @param {string} accelerationUnit - 加速度単位
      * @returns {string} - 速度単位（m/s or cm/s）
      */
     function getVelocityUnit(accelerationUnit) {
-        return isCmPerSec2Unit(accelerationUnit) ? 'cm/s' : 'm/s';
+        return Analysis.isCmPerSec2Unit(accelerationUnit) ? 'cm/s' : 'm/s';
     }
 
     /**
@@ -623,6 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
         console.log(I18n.t('messages.exportComplete') + filename);
     }

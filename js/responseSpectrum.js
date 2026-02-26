@@ -87,30 +87,13 @@ const ResponseSpectrum = {
     },
 
     /**
-     * 加速度データを m/s² に変換
+     * 加速度データを m/s² に変換（Analysis モジュールに委譲）
      * @param {number[]} acceleration - 加速度データ
      * @param {string} unit - 加速度単位（m/s², cm/s2[=gal], g）
      * @returns {number[]}
      */
     _convertAccelerationToMps2(acceleration, unit = 'cm/s2') {
-        if (this._isCmPerSec2Unit(unit)) {
-            return acceleration.map(value => value / 100);
-        }
-        if (unit === 'g') {
-            return acceleration.map(value => value * 9.80665);
-        }
-        return [...acceleration];
-    },
-
-    /**
-     * gal相当（cm/s2, cm/s²）単位かどうか
-     * @param {string} unit - 加速度単位
-     * @returns {boolean}
-     */
-    _isCmPerSec2Unit(unit) {
-        return unit === 'cm/s2'
-            || unit === 'cm/s²'
-            || unit === 'gal';
+        return Analysis.convertAccelerationToMps2(acceleration, unit);
     },
 
     /**

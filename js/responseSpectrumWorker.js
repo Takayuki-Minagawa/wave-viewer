@@ -2,7 +2,7 @@
  * 応答スペクトル計算ワーカー
  */
 
-self.importScripts('responseSpectrum.js');
+self.importScripts('analysis.js', 'responseSpectrum.js');
 
 self.onmessage = (event) => {
     try {

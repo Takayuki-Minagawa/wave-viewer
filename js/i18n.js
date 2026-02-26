@@ -121,6 +121,7 @@ const I18n = {
                 fileTypeError: '対応していないファイル形式です。\nCSV, TXT, DAT ファイルを選択してください。',
                 noFileError: 'ファイルを選択してください。',
                 noDataError: 'データがありません。まずファイルを読み込んで解析を実行してください。',
+                invalidSamplingRate: 'サンプリング周波数は正の数を入力してください。',
                 analysisError: '解析エラー: ',
                 exportComplete: 'エクスポート完了: '
             }
@@ -237,6 +238,7 @@ const I18n = {
                 fileTypeError: 'Unsupported file format.\nPlease select CSV, TXT, or DAT file.',
                 noFileError: 'Please select a file.',
                 noDataError: 'No data available. Please load a file and run analysis first.',
+                invalidSamplingRate: 'Please enter a positive number for sampling rate.',
                 analysisError: 'Analysis Error: ',
                 exportComplete: 'Export Complete: '
             }

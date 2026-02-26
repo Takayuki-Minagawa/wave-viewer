@@ -9,7 +9,13 @@ const Analysis = {
      * @returns {number}
      */
     max(data) {
-        return Math.max(...data);
+        let max = -Infinity;
+        for (let i = 0; i < data.length; i++) {
+            if (data[i] > max) {
+                max = data[i];
+            }
+        }
+        return max;
     },
 
     /**
@@ -18,7 +24,13 @@ const Analysis = {
      * @returns {number}
      */
     min(data) {
-        return Math.min(...data);
+        let min = Infinity;
+        for (let i = 0; i < data.length; i++) {
+            if (data[i] < min) {
+                min = data[i];
+            }
+        }
+        return min;
     },
 
     /**
@@ -309,5 +321,6 @@ const Analysis = {
     }
 };
 
-// グローバルにエクスポート
-window.Analysis = Analysis;
+// グローバルにエクスポート（window/worker両対応）
+const analysisGlobal = typeof window !== 'undefined' ? window : self;
+analysisGlobal.Analysis = Analysis;
