@@ -301,21 +301,14 @@ const WaveformChart = {
 
         // 0.5Hz以上の最大値でY軸レンジを設定
         const yMaxValue = this._getMaxAbove05Hz(filteredFreq, filteredAmp);
-        const yAxisMax = logScale
-            ? (yMaxValue > 0 ? Math.log10(yMaxValue * 1.1) : undefined)
-            : (yMaxValue > 0 ? yMaxValue * 1.1 : undefined);
+        const yAxisMax = yMaxValue > 0 ? yMaxValue * 1.1 : undefined;
 
         // ダウンサンプリング
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
-        // 対数スケール用のデータ変換
-        const displayValues = logScale
-            ? values.map(v => v > 0 ? Math.log10(v) : -10)
-            : values;
-
         const yAxisLabel = isPowerSpectrum
-            ? (logScale ? `パワー [log(${unit}²)]` : `パワー [${unit}²]`)
-            : (logScale ? `振幅 [log(${unit})]` : `振幅 [${unit}]`);
+            ? `パワー [${unit}²]`
+            : `振幅 [${unit}]`;
 
         this.spectrumChart = new Chart(canvas, {
             type: 'line',
@@ -323,7 +316,7 @@ const WaveformChart = {
                 labels: labels,
                 datasets: [{
                     label: isPowerSpectrum ? 'パワースペクトル' : '振幅スペクトル',
-                    data: displayValues,
+                    data: values,
                     borderColor: 'rgba(220, 53, 69, 1)',
                     backgroundColor: 'rgba(220, 53, 69, 0.1)',
                     borderWidth: 1,
@@ -336,14 +329,22 @@ const WaveformChart = {
                 ...this.defaultOptions,
                 scales: {
                     x: {
-                        type: 'linear',
+                        type: logScale ? 'logarithmic' : 'linear',
                         position: 'bottom',
                         title: {
                             display: true,
                             text: `${I18n.t('charts.frequency')} [Hz]`
                         },
                         ticks: {
-                            callback: (value) => value.toFixed(1)
+                            callback: (value) => {
+                                if (logScale) {
+                                    if ([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100].includes(value)) {
+                                        return value;
+                                    }
+                                    return null;
+                                }
+                                return value.toFixed(1);
+                            }
                         }
                     },
                     y: {
@@ -359,10 +360,7 @@ const WaveformChart = {
                     tooltip: {
                         callbacks: {
                             label: (context) => {
-                                const originalValue = logScale
-                                    ? Math.pow(10, context.parsed.y)
-                                    : context.parsed.y;
-                                return `${originalValue.toExponential(4)}`;
+                                return `${context.parsed.y.toExponential(4)}`;
                             },
                             title: (tooltipItems) => {
                                 return `${I18n.t('charts.frequency')}: ${tooltipItems[0].parsed.x.toFixed(2)} Hz`;
@@ -713,24 +711,19 @@ const WaveformChart = {
 
         // 0.5Hz以上の最大値でY軸レンジを設定
         const yMaxValue = this._getMaxAbove05Hz(filteredFreq, filteredAmp);
-        const yAxisMax = logScale
-            ? (yMaxValue > 0 ? Math.log10(yMaxValue * 1.1) : undefined)
-            : (yMaxValue > 0 ? yMaxValue * 1.1 : undefined);
+        const yAxisMax = yMaxValue > 0 ? yMaxValue * 1.1 : undefined;
 
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
-        const displayValues = logScale
-            ? values.map(v => v > 0 ? Math.log10(v) : -10)
-            : values;
-
         this.spectrumChart.data.labels = labels;
-        this.spectrumChart.data.datasets[0].data = displayValues;
+        this.spectrumChart.data.datasets[0].data = values;
         this.spectrumChart.data.datasets[0].label = isPowerSpectrum ? 'パワースペクトル' : '振幅スペクトル';
 
         const yAxisLabel = isPowerSpectrum
-            ? (logScale ? `パワー [log(${unit}²)]` : `パワー [${unit}²]`)
-            : (logScale ? `振幅 [log(${unit})]` : `振幅 [${unit}]`);
+            ? `パワー [${unit}²]`
+            : `振幅 [${unit}]`;
 
+        this.spectrumChart.options.scales.x.type = logScale ? 'logarithmic' : 'linear';
         this.spectrumChart.options.scales.y.max = yAxisMax;
         this.spectrumChart.options.scales.y.title.text = yAxisLabel;
         this.spectrumChart.update();
