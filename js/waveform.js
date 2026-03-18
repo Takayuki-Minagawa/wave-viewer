@@ -724,6 +724,15 @@ const WaveformChart = {
             : `振幅 [${unit}]`;
 
         this.spectrumChart.options.scales.x.type = logScale ? 'logarithmic' : 'linear';
+        this.spectrumChart.options.scales.x.ticks.callback = (value) => {
+            if (logScale) {
+                if ([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100].includes(value)) {
+                    return value;
+                }
+                return null;
+            }
+            return value.toFixed(1);
+        };
         this.spectrumChart.options.scales.y.max = yAxisMax;
         this.spectrumChart.options.scales.y.title.text = yAxisLabel;
         this.spectrumChart.update();
