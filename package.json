@@ -4,10 +4,10 @@
   "description": "加速度データの波形分析を行うWebアプリケーション（速度・変位計算、K-net/KiK-net対応、多言語対応）",
   "main": "index.html",
   "scripts": {
-    "lint": "eslint js/**/*.js",
-    "lint:fix": "eslint js/**/*.js --fix",
+    "lint": "eslint \"js/**/*.js\" \"tests/**/*.{js,cjs}\"",
+    "lint:fix": "eslint \"js/**/*.js\" \"tests/**/*.{js,cjs}\" --fix",
     "validate:html": "html-validate index.html",
-    "test": "echo \"Tests passed\" && exit 0",
+    "test": "node --test tests/*.test.js",
     "start": "python3 -m http.server 8080"
   },
   "repository": {

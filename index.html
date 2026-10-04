@@ -14,6 +14,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
             integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
             crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"
+            integrity="sha384-Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm"
+            crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"
             integrity="sha384-dwwI6ICEN/0ZQlS5owhUa/6ZzvwUPmjH45bFVCAcjgjTulbHJvlE+TGU3g1k0N3R"
             crossorigin="anonymous"></script>
@@ -69,6 +72,7 @@
             <button type="button" id="analyzeBtn" class="btn btn-primary" disabled>
                 <span data-i18n="controls.analyzeBtn">🔍 解析実行</span>
             </button>
+            <button type="button" id="cancelAnalysis" class="btn btn-secondary hidden" data-i18n="controls.cancel">キャンセル</button>
         </section>
 
         <!-- ドラッグ&ドロップエリア -->
@@ -130,6 +134,13 @@
                 <div class="chart-header">
                     <h2>📊 <span data-i18n="charts.spectrum">フーリエスペクトル (Fourier Spectrum)</span></h2>
                     <div class="chart-controls">
+                        <label for="windowType" data-i18n="charts.window">窓関数</label>
+                        <select id="windowType">
+                            <option value="hanning" data-i18n="charts.hann" selected>Hann（標準）</option>
+                            <option value="hamming">Hamming</option>
+                            <option value="blackman">Blackman</option>
+                            <option value="rectangular" data-i18n="charts.rectangular">矩形（窓なし）</option>
+                        </select>
                         <label>
                             <input type="checkbox" id="logScale"> <span data-i18n="charts.logScale">横軸を対数表示</span>
                         </label>
@@ -142,6 +153,7 @@
                 <div class="chart-wrapper">
                     <canvas id="spectrumChart"></canvas>
                 </div>
+                <p class="chart-hint" data-i18n="charts.spectrumHint">振幅は窓の利得補正済み。パワー表示は振幅の二乗（PSDではありません）。</p>
             </div>
 
             <!-- 加速度応答スペクトル -->
@@ -248,6 +260,9 @@
                 </button>
                 <button type="button" id="exportResponseSpectra" class="btn btn-secondary">
                     <span data-i18n="export.responseSpectra">📥 応答スペクトル</span>
+                </button>
+                <button type="button" id="exportFourier" class="btn btn-secondary">
+                    <span data-i18n="export.fourier">📥 フーリエスペクトル</span>
                 </button>
                 <button type="button" id="exportAll" class="btn btn-primary">
                     <span data-i18n="export.all">📥 全データ（CSV）</span>

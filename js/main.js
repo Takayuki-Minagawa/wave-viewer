@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
         skipHeader: document.getElementById('skipHeader'),
         dataUnit: document.getElementById('dataUnit'),
         analyzeBtn: document.getElementById('analyzeBtn'),
+        cancelAnalysis: document.getElementById('cancelAnalysis'),
+        windowType: document.getElementById('windowType'),
         dropZone: document.getElementById('dropZone'),
         chartsSection: document.getElementById('chartsSection'),
         statsSection: document.getElementById('statsSection'),
@@ -36,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         exportVelocity: document.getElementById('exportVelocity'),
         exportDisplacement: document.getElementById('exportDisplacement'),
         exportResponseSpectra: document.getElementById('exportResponseSpectra'),
+        exportFourier: document.getElementById('exportFourier'),
         exportAll: document.getElementById('exportAll'),
         // 統計情報
         statCount: document.getElementById('statCount'),
@@ -65,6 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
         powers: null,
         responseSpectrum: null,
         responseWorker: null,
+        analysisId: 0,
+        busy: false,
+        windowType: 'hanning',
         samplingRate: null,
         unit: null
     };
@@ -88,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 解析ボタン
         elements.analyzeBtn.addEventListener('click', runAnalysis);
+        elements.cancelAnalysis.addEventListener('click', cancelAnalysis);
+        elements.windowType.addEventListener('change', updateWindow);
 
         // ドラッグ&ドロップ
         elements.dropZone.addEventListener('dragover', handleDragOver);
@@ -126,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.exportVelocity.addEventListener('click', () => exportData('velocity'));
         elements.exportDisplacement.addEventListener('click', () => exportData('displacement'));
         elements.exportResponseSpectra.addEventListener('click', () => exportData('responseSpectra'));
+        elements.exportFourier.addEventListener('click', () => exportData('fourier'));
         elements.exportAll.addEventListener('click', () => exportData('all'));
 
         // 言語切り替えボタン
@@ -199,64 +208,75 @@ document.addEventListener('DOMContentLoaded', () => {
         await runAnalysis();
     }
 
-    /**
-     * 応答スペクトルワーカーを停止
-     */
+    function setBusy(busy) {
+        state.busy = busy;
+        elements.analyzeBtn.disabled = busy || !state.currentFile;
+        elements.analyzeBtn.querySelector('span').textContent = I18n.t(
+            busy ? 'controls.analyzing' : 'controls.analyzeBtn'
+        );
+        elements.cancelAnalysis.classList.toggle('hidden', !busy);
+        elements.windowType.disabled = busy;
+        elements.chartsSection.setAttribute('aria-busy', String(busy));
+    }
+
+    function hideResults() {
+        elements.chartsSection.classList.add('hidden');
+        elements.statsSection.classList.add('hidden');
+        elements.exportSection.classList.add('hidden');
+        elements.dropZone.classList.remove('hidden');
+        state.data = null;
+        state.responseSpectrum = null;
+    }
+
     function terminateResponseWorker() {
         if (state.responseWorker) {
-            state.responseWorker.terminate();
-            state.responseWorker = null;
+            state.responseWorker.cancel();
         }
     }
 
-    /**
-     * 応答スペクトルを非同期計算（Worker）
-     * @param {number[]} acceleration - 加速度データ
-     * @param {number} samplingRate - サンプリング周波数
-     * @param {string} unit - 加速度単位
-     * @param {Object} config - 計算設定
-     * @returns {Promise<Object>}
-     */
+    function cancelAnalysis() {
+        state.analysisId++;
+        terminateResponseWorker();
+        hideResults();
+        setBusy(false);
+    }
+
+    /** Workerの停止時にもPromiseを完了させ、古い解析を残さない。 */
     function computeResponseSpectrumAsync(acceleration, samplingRate, unit, config) {
         if (typeof Worker === 'undefined') {
-            return Promise.resolve(
-                ResponseSpectrum.compute(acceleration, samplingRate, unit, config)
-            );
+            return Promise.resolve(ResponseSpectrum.compute(acceleration, samplingRate, unit, config));
         }
-
-        terminateResponseWorker();
 
         return new Promise((resolve, reject) => {
             const worker = new Worker('js/responseSpectrumWorker.js');
-            state.responseWorker = worker;
-
-            worker.onmessage = (event) => {
-                if (state.responseWorker === worker) {
+            const finish = (error, result) => {
+                worker.onmessage = null;
+                worker.onerror = null;
+                worker.onmessageerror = null;
+                worker.terminate();
+                if (state.responseWorker === task) {
                     state.responseWorker = null;
                 }
-                worker.terminate();
-
-                if (event.data && event.data.ok) {
-                    resolve(event.data.result);
-                    return;
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
                 }
-                reject(new Error(event.data?.error || '応答スペクトル計算に失敗しました'));
             };
-
-            worker.onerror = (event) => {
-                if (state.responseWorker === worker) {
-                    state.responseWorker = null;
-                }
-                worker.terminate();
-                reject(new Error(event.message || '応答スペクトルワーカーでエラーが発生しました'));
+            const task = {
+                cancel: () => finish(new DOMException('Analysis cancelled', 'AbortError'))
             };
-
-            worker.postMessage({
-                acceleration,
-                samplingRate,
-                unit,
-                config
-            });
+            state.responseWorker = task;
+            worker.onmessage = ({ data }) => {
+                finish(data?.ok ? null : new Error(data?.error || 'Response spectrum failed'), data?.result);
+            };
+            worker.onerror = (event) => finish(new Error(event.message || 'Response worker failed'));
+            worker.onmessageerror = () => finish(new Error('Invalid response worker message'));
+            try {
+                worker.postMessage({ acceleration, samplingRate, unit, config });
+            } catch (error) {
+                finish(error);
+            }
         });
     }
 
@@ -269,32 +289,36 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        try {
-            // ローディング表示
-            elements.analyzeBtn.disabled = true;
-            elements.analyzeBtn.querySelector('span').textContent = I18n.t('controls.analyzing');
+        const analysisId = ++state.analysisId;
+        const file = state.currentFile;
+        const windowType = elements.windowType.value;
+        terminateResponseWorker();
+        hideResults();
+        setBusy(true);
 
+        try {
             // パラメータ取得
-            let samplingRate = parseFloat(elements.samplingRate.value);
-            if (!Number.isFinite(samplingRate) || samplingRate <= 0) {
-                alert(I18n.t('messages.invalidSamplingRate'));
-                return;
+            let samplingRate = Number(elements.samplingRate.value);
+            const skipHeader = Number(elements.skipHeader.value);
+            if (!Number.isInteger(skipHeader) || skipHeader < 0) {
+                throw new Error(I18n.t('messages.invalidSkipHeader'));
             }
-            const skipHeader = parseInt(elements.skipHeader.value) || 0;
             let unit = elements.dataUnit.value;
 
             // ファイル読み込み
-            const result = await FileReaderModule.loadFile(state.currentFile, {
+            const result = await FileReaderModule.loadFile(file, {
                 skipHeader: skipHeader
             });
 
-            state.data = result.data;
-            state.metadata = result.metadata;
+            if (analysisId !== state.analysisId) {
+                return;
+            }
+            const next = { data: result.data, metadata: result.metadata, windowType };
 
             // K-netフォーマットの場合、メタデータから設定を自動取得
-            if (state.metadata.isKnet) {
-                if (state.metadata.samplingRate) {
-                    samplingRate = state.metadata.samplingRate;
+            if (next.metadata.isKnet) {
+                if (next.metadata.samplingRate) {
+                    samplingRate = next.metadata.samplingRate;
                     elements.samplingRate.value = samplingRate;
                     console.log(`サンプリング周波数を自動設定: ${samplingRate} Hz`);
                 }
@@ -307,30 +331,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.skipHeader.value = 0;
 
                 // メタデータ情報を表示
-                if (state.metadata.stationCode) {
-                    console.log(`観測点: ${state.metadata.stationCode}`);
+                if (next.metadata.stationCode) {
+                    console.log(`観測点: ${next.metadata.stationCode}`);
                 }
-                if (state.metadata.direction) {
-                    console.log(`方向: ${state.metadata.direction}`);
+                if (next.metadata.direction) {
+                    console.log(`方向: ${next.metadata.direction}`);
                 }
             }
 
-            if (state.data.length < 2) {
+            if (!Number.isFinite(samplingRate) || samplingRate <= 0) {
+                throw new Error(I18n.t('messages.invalidSamplingRate'));
+            }
+
+            if (next.data.length < 2) {
                 throw new Error('データが不足しています（2点以上必要）');
             }
 
             // 状態を保存
-            state.samplingRate = samplingRate;
-            state.unit = unit;
+            next.samplingRate = samplingRate;
+            next.unit = unit;
 
             // 速度と変位を計算
             const { velocity, displacement } = Analysis.computeVelocityAndDisplacement(
-                state.data,
+                next.data,
                 samplingRate,
                 unit
             );
-            state.velocity = velocity;
-            state.displacement = displacement;
+            next.velocity = velocity;
+            next.displacement = displacement;
 
             const velocityUnit = getVelocityUnit(unit);
             const velocityValues = convertVelocityFromMps(velocity, velocityUnit);
@@ -338,12 +366,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`変位最大値: ${(Analysis.max(displacement) * 100).toFixed(4)} cm`);
 
             // FFT 解析
-            const spectrumResult = FFT.amplitudeSpectrum(state.data, samplingRate);
-            state.frequencies = spectrumResult.frequencies;
-            state.amplitudes = spectrumResult.amplitudes;
+            const spectrumResult = FFT.amplitudeSpectrum(next.data, samplingRate, { windowType });
+            next.frequencies = spectrumResult.frequencies;
+            next.amplitudes = spectrumResult.amplitudes;
 
-            const powerResult = FFT.powerSpectrum(state.data, samplingRate);
-            state.powers = powerResult.powers;
+            next.powers = next.amplitudes.map(value => value * value);
 
             // 応答スペクトル解析（周期0.02-10s、200分割、h=2/3/5%）
             const responseConfig = {
@@ -353,16 +380,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 dampings: [0.02, 0.03, 0.05]
             };
             try {
-                state.responseSpectrum = await computeResponseSpectrumAsync(
-                    state.data,
+                next.responseSpectrum = await computeResponseSpectrumAsync(
+                    next.data,
                     samplingRate,
                     unit,
                     responseConfig
                 );
             } catch (workerError) {
+                if (analysisId !== state.analysisId || workerError.name === 'AbortError') {
+                    return;
+                }
                 console.warn('応答スペクトルワーカーに失敗したため同期計算にフォールバックします', workerError);
-                state.responseSpectrum = ResponseSpectrum.compute(
-                    state.data,
+                next.responseSpectrum = ResponseSpectrum.compute(
+                    next.data,
                     samplingRate,
                     unit,
                     responseConfig
@@ -370,8 +400,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 統計計算
-            const stats = Analysis.computeAll(state.data, samplingRate);
-            const peak = FFT.findPeakFrequency(state.frequencies, state.amplitudes);
+            const stats = Analysis.computeAll(next.data, samplingRate);
+            const peak = FFT.findPeakFrequency(next.frequencies, next.amplitudes);
+
+            if (analysisId !== state.analysisId) {
+                return;
+            }
+            Object.assign(state, next);
 
             // チャート表示
             WaveformChart.createWaveformChart(
@@ -431,12 +466,17 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.dropZone.classList.add('hidden');
 
         } catch (error) {
+            if (analysisId !== state.analysisId) {
+                return;
+            }
+            hideResults();
             console.error(I18n.t('messages.analysisError'), error);
             alert(I18n.t('messages.analysisError') + error.message);
         } finally {
-            terminateResponseWorker();
-            elements.analyzeBtn.disabled = false;
-            elements.analyzeBtn.querySelector('span').textContent = I18n.t('controls.analyzeBtn');
+            if (analysisId === state.analysisId) {
+                terminateResponseWorker();
+                setBusy(false);
+            }
         }
     }
 
@@ -465,19 +505,37 @@ document.addEventListener('DOMContentLoaded', () => {
      * スペクトル表示を更新
      */
     function updateSpectrumDisplay() {
-        if (!state.frequencies || !state.amplitudes) {
+        if (!state.data || state.busy || !state.frequencies || !state.amplitudes) {
             return;
         }
 
         const isPowerSpectrum = elements.powerSpectrum.checked;
         const logScale = elements.logScale.checked;
-        const unit = elements.dataUnit.value;
+        const unit = state.unit;
 
         WaveformChart.updateSpectrumChart(
             state.frequencies,
             isPowerSpectrum ? state.powers : state.amplitudes,
             { logScale, isPowerSpectrum, unit }
         );
+    }
+
+    /** 窓の変更はFFTだけを再計算し、時間波形と応答スペクトルを保持する。 */
+    function updateWindow() {
+        if (!state.data || state.busy) {
+            return;
+        }
+        const windowType = elements.windowType.value;
+        const { frequencies, amplitudes } = FFT.amplitudeSpectrum(
+            state.data, state.samplingRate, { windowType }
+        );
+        Object.assign(state, {
+            frequencies, amplitudes, windowType,
+            powers: amplitudes.map(value => value * value)
+        });
+        updateSpectrumDisplay();
+        const peak = FFT.findPeakFrequency(frequencies, amplitudes);
+        elements.statPeakFreq.textContent = Analysis.formatNumber(peak.frequency, 2);
     }
 
     /**
@@ -553,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} type - データタイプ（acceleration, velocity, displacement, responseSpectra, all）
      */
     function exportData(type) {
-        if (!state.data) {
+        if (!state.data || state.busy) {
             alert(I18n.t('messages.noDataError'));
             return;
         }
@@ -593,6 +651,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             csvContent = buildResponseSpectrumCsv(state.responseSpectrum, state.unit, velocityUnit);
             filename = 'response_spectra.csv';
+        } else if (type === 'fourier') {
+            const rows = [`Frequency(Hz),Amplitude(${state.unit}),SquaredAmplitude((${state.unit})^2),Window`];
+            for (let i = 0; i < state.frequencies.length; i++) {
+                rows.push([state.frequencies[i], state.amplitudes[i], state.powers[i], state.windowType].join(','));
+            }
+            csvContent = rows.join('\n') + '\n';
+            filename = 'fourier_spectrum.csv';
         } else if (type === 'all') {
             // 全データ
             csvContent = `Time(s),Acceleration(${state.unit}),Velocity(${velocityUnit}),Displacement(m)\n`;
@@ -626,6 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function updateLanguage() {
         const lang = I18n.getCurrentLang();
+        document.documentElement.lang = lang;
 
         // 言語ボタンのアクティブ状態を更新
         document.getElementById('langJa').classList.toggle('active', lang === 'ja');
@@ -642,6 +708,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.textContent = text;
             }
         });
+
+        elements.fileName.textContent = state.currentFile?.name || I18n.t('controls.fileNotSelected');
+        setBusy(state.busy);
 
         // 単位表示の更新
         const unitElement = document.querySelector('[data-i18n-unit="lines"]');
@@ -746,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (WaveformChart.spectrumChart) {
             WaveformChart.spectrumChart.options.scales.x.title.text =
                 `${I18n.t('charts.frequency')} [Hz]`;
-            WaveformChart.spectrumChart.update();
+            updateSpectrumDisplay();
         }
 
         // 加速度応答スペクトル

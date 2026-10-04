@@ -3,250 +3,162 @@
  */
 
 const FileReaderModule = {
-    /**
-     * ファイルをテキストとして読み込む
-     * @param {File} file - ファイルオブジェクト
-     * @returns {Promise<string>} - ファイル内容
-     */
+    /** ファイルをテキストとして読み込む。 */
     readAsText(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-
-            reader.onload = (event) => {
-                resolve(event.target.result);
-            };
-
-            reader.onerror = (error) => {
-                reject(new Error('ファイルの読み込みに失敗しました: ' + error.message));
-            };
-
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました'));
             reader.readAsText(file);
         });
     },
 
-    /**
-     * テキストデータをパースして数値配列に変換
-     * @param {string} text - テキストデータ
-     * @param {Object} options - パースオプション
-     * @returns {number[]} - 数値配列
-     */
-    parseData(text, options = {}) {
-        // K-net/KiK-netフォーマットかチェック
+    /** データとメタデータを同じ内容から一度だけ解析する。 */
+    parse(text, options = {}) {
         if (this.isKnetFormat(text)) {
-            console.log('K-net/KiK-netフォーマットを検出しました');
-            return this.parseKnetData(text);
+            return this.parseKnetRecord(text);
+        }
+        return {
+            data: this.parseDelimitedData(text, options),
+            metadata: this.emptyMetadata()
+        };
+    },
+
+    /** テキストデータを数値配列に変換する。 */
+    parseData(text, options = {}) {
+        return this.parse(text, options).data;
+    },
+
+    /**
+     * 通常の数値ファイルを解析する。
+     * skipHeader は空行を含む物理行数。空行と # / // コメント行のみを無視する。
+     * 不正な数値行を飛ばすと時間軸が変わるため、行番号を示して読み込みを中止する。
+     */
+    parseDelimitedData(text, options = {}) {
+        const { skipHeader = 0, delimiter = null, columnIndex = 0 } = options;
+        if (!Number.isInteger(skipHeader) || skipHeader < 0) {
+            throw new Error('ヘッダー行スキップは0以上の整数で指定してください');
+        }
+        if (!Number.isInteger(columnIndex) || columnIndex < 0) {
+            throw new Error('列番号は0以上の整数で指定してください');
+        }
+        if (delimiter !== null && (typeof delimiter !== 'string' || delimiter.length !== 1)) {
+            throw new Error('区切り文字は1文字で指定してください');
         }
 
-        const {
-            skipHeader = 0,
-            delimiter = null, // null = 自動検出
-            columnIndex = 0
-        } = options;
-
-        // 行に分割（空行を除去）
-        let lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-
-        // ヘッダー行をスキップ
-        if (skipHeader > 0) {
-            lines = lines.slice(skipHeader);
-        }
-
-        // デリミタを自動検出
-        const detectedDelimiter = delimiter || this.detectDelimiter(lines[0]);
-
+        const lines = text.split(/\r\n|\n|\r/);
         const data = [];
-        const errors = [];
+        let detectedDelimiter;
+        // 列/区切り文字を明示すると、カンマを桁区切りとして自動解釈しない。
+        const allowGroupedLine = delimiter === null && !Object.hasOwn(options, 'columnIndex');
 
-        lines.forEach((line, index) => {
-            try {
-                let value;
-
-                if (detectedDelimiter) {
-                    // 区切り文字がある場合は指定列を取得
-                    const columns = line.split(detectedDelimiter);
-                    value = columns[columnIndex];
-                } else {
-                    // 区切り文字がない場合は行全体を数値として扱う
-                    value = line;
-                }
-
-                // 数値に変換
-                const num = this.parseNumber(value);
-
-                if (!isNaN(num) && isFinite(num)) {
-                    data.push(num);
-                } else {
-                    errors.push({ line: index + skipHeader + 1, value: value });
-                }
-            } catch (e) {
-                errors.push({ line: index + skipHeader + 1, value: line, error: e.message });
+        for (let index = skipHeader; index < lines.length; index++) {
+            const line = lines[index];
+            const trimmed = line.trim();
+            if (!trimmed || /^(#|\/\/)/.test(trimmed)) {
+                continue;
             }
-        });
-
+            if (detectedDelimiter === undefined) {
+                detectedDelimiter = delimiter || this.detectDelimiter(line, allowGroupedLine);
+            }
+            const columns = this.splitColumns(line, detectedDelimiter);
+            const value = columns[columnIndex];
+            const num = this.parseNumber(value);
+            if (!Number.isFinite(num)) {
+                throw new Error(`数値データが不正です（${index + 1}行目、${columnIndex + 1}列目）`);
+            }
+            data.push(num);
+        }
         if (data.length === 0) {
             throw new Error('有効な数値データが見つかりませんでした');
         }
-
-        if (errors.length > 0 && errors.length <= 10) {
-            console.warn('パースエラーがある行:', errors);
-        } else if (errors.length > 10) {
-            console.warn(`パースエラー: ${errors.length}行でエラーが発生`);
-        }
-
         return data;
     },
 
     /**
-     * K-net/KiK-netフォーマットかどうかを判定
-     * @param {string} text - テキストデータ
-     * @returns {boolean}
+     * 数値全体を検証する。部分的な parseFloat (例: "1abc" → 1) は使わない。
+     * 正規の3桁区切り、指数表記、およびCSVの引用符付き数値を受け付ける。
      */
-    isKnetFormat(text) {
-        const lines = text.split(/\r?\n/);
-        if (lines.length < 20) {
-            return false;
-        }
-
-        // 最初の数行でK-netフォーマットの特徴をチェック
-        // 1行目: Origin Time
-        // 11行目: Sampling Freq(Hz)
-        // 14行目: Scale Factor
-        const hasOriginTime = lines[0] && lines[0].includes('Origin Time');
-        const hasSamplingFreq = lines.length > 10 && lines[10] && lines[10].includes('Sampling Freq');
-        const hasScaleFactor = lines.length > 13 && lines[13] && lines[13].includes('Scale Factor');
-
-        // データ行（18行目以降）に数値データが含まれているかチェック
-        const hasDataLine = lines.length > 17 && lines[17] && /^\s*-?\d+/.test(lines[17].trim());
-
-        return hasOriginTime && hasSamplingFreq && hasScaleFactor && hasDataLine;
-    },
-
-    /**
-     * K-net/KiK-netフォーマットのデータをパース
-     * @param {string} text - テキストデータ
-     * @returns {number[]} - 数値配列（スケールファクター適用済み）
-     */
-    parseKnetData(text) {
-        const lines = text.split(/\r?\n/);
-        const data = [];
-
-        // スケールファクターを取得（14行目）
-        let scaleFactor = 1.0;
-        if (lines.length > 13) {
-            const scaleFactorLine = lines[13];
-            // "Scale Factor      7845(gal)/8223790" から数値を抽出
-            const match = scaleFactorLine.match(/(\d+)\(gal\)\/(\d+)/);
-            if (match) {
-                const numerator = parseFloat(match[1]);
-                const denominator = parseFloat(match[2]);
-                scaleFactor = numerator / denominator;
-                console.log(`スケールファクター: ${numerator}/${denominator} = ${scaleFactor}`);
-            }
-        }
-
-        // サンプリング周波数を取得（11行目）
-        let samplingFreq = 100; // デフォルト
-        if (lines.length > 10) {
-            const samplingLine = lines[10];
-            const match = samplingLine.match(/(\d+)Hz/);
-            if (match) {
-                samplingFreq = parseInt(match[1]);
-                console.log(`サンプリング周波数: ${samplingFreq} Hz`);
-            }
-        }
-
-        // 18行目以降がデータ行
-        for (let i = 17; i < lines.length; i++) {
-            const line = lines[i];
-            if (!line || line.trim() === '') {
-                continue;
-            }
-
-            // 空白で分割して数値を取得
-            const numbers = line.trim().split(/\s+/);
-
-            numbers.forEach(numStr => {
-                const num = parseFloat(numStr);
-                if (!isNaN(num) && isFinite(num)) {
-                    // スケールファクターを適用
-                    data.push(num * scaleFactor);
-                }
-            });
-        }
-
-        if (data.length === 0) {
-            throw new Error('K-netフォーマットからデータを抽出できませんでした');
-        }
-
-        console.log(`K-netデータ読み込み完了: ${data.length}点`);
-        return data;
-    },
-
-    /**
-     * 文字列を数値にパース
-     * @param {string} str - 文字列
-     * @returns {number}
-     */
-    parseNumber(str) {
-        if (typeof str !== 'string') {
+    parseNumber(value) {
+        if (typeof value !== 'string') {
             return NaN;
         }
-
-        // 前後の空白を除去
-        str = str.trim();
-
-        // 空文字チェック
-        if (str === '') {
+        let token = value.trim();
+        if (token.startsWith('"') && token.endsWith('"')) {
+            token = token.slice(1, -1).trim();
+        }
+        const decimal = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+        const grouped = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?(?:[eE][+-]?\d+)?$/;
+        if (!decimal.test(token) && !grouped.test(token)) {
             return NaN;
         }
-
-        // 科学的表記に対応（例: 1.23e-4, 1.23E+4）
-        // カンマ区切りの数値にも対応（例: 1,234.56）
-        str = str.replace(/,(?=\d{3})/g, '');
-
-        return parseFloat(str);
+        const number = Number(token.replace(/,/g, ''));
+        return Number.isFinite(number) ? number : NaN;
     },
 
-    /**
-     * デリミタを自動検出
-     * @param {string} line - サンプル行
-     * @returns {string|null}
-     */
-    detectDelimiter(line) {
+    /** 先頭の数値行から区切り文字を検出する。端のタブは空欄を表す区切りとして保持する。 */
+    detectDelimiter(line, allowGroupedLine = true) {
         if (!line) {
             return null;
         }
-
-        const delimiters = [',', '\t', ';', ' '];
-        const counts = {};
-
-        delimiters.forEach(d => {
-            counts[d] = (line.split(d).length - 1);
-        });
-
-        // 最も多く出現する区切り文字を選択
-        let maxCount = 0;
-        let bestDelimiter = null;
-
-        for (const [d, count] of Object.entries(counts)) {
-            if (count > maxCount) {
-                maxCount = count;
-                bestDelimiter = d;
+        const trimmed = line.trim();
+        // TSVの先頭・末尾の空欄を通常のインデントとして除去しない。
+        const outsideQuotes = line.replace(/"(?:[^"]|"")*"/g, '');
+        if (outsideQuotes.includes('\t')) {
+            return '\t';
+        }
+        if (allowGroupedLine && Number.isFinite(this.parseNumber(trimmed))) {
+            return null;
+        }
+        // 引用符内のカンマは列区切りではない。
+        for (const delimiter of [';', ',']) {
+            if (outsideQuotes.includes(delimiter)) {
+                return delimiter;
             }
         }
+        return /\s/.test(outsideQuotes.trim()) ? ' ' : null;
+    },
 
-        // 区切り文字が見つからない場合はnullを返す
-        return maxCount > 0 ? bestDelimiter : null;
+    /** 単純な数値CSVの引用符を尊重して列を分割する。 */
+    splitColumns(line, delimiter) {
+        if (!delimiter) {
+            return [line];
+        }
+        if (delimiter === ' ') {
+            return line.trim().split(/\s+/);
+        }
+        const columns = [];
+        let field = '';
+        let quoted = false;
+        for (let i = 0; i < line.length; i++) {
+            const character = line[i];
+            if (character === '"') {
+                quoted = !quoted;
+            }
+            if (character === delimiter && !quoted) {
+                columns.push(field);
+                field = '';
+            } else {
+                field += character;
+            }
+        }
+        columns.push(field);
+        return columns;
     },
 
     /**
-     * K-netフォーマットからメタデータを抽出
-     * @param {string} text - テキストデータ
-     * @returns {Object} - メタデータ（samplingRate, scaleFactor, etc.）
+     * ヘッダーの特徴で検出する。数値欄やデータ行が壊れていても検出し、
+     * K-net専用の検証でエラーにする（通常データとして読み飛ばさない）。
      */
-    extractKnetMetadata(text) {
-        const lines = text.split(/\r?\n/);
-        const metadata = {
+    isKnetFormat(text) {
+        const header = text.split(/\r\n|\n|\r/).slice(0, 17);
+        return /^\s*Origin Time\b/.test(header[0] || '') ||
+            (header.some(line => /^Sampling Freq/.test(line)) &&
+             header.some(line => /^Scale Factor/.test(line)));
+    },
+
+    emptyMetadata() {
+        return {
             isKnet: false,
             samplingRate: null,
             scaleFactor: null,
@@ -254,99 +166,88 @@ const FileReaderModule = {
             stationCode: null,
             direction: null
         };
+    },
 
-        if (!this.isKnetFormat(text)) {
-            return metadata;
+    /** K-netの必須換算情報を検証する。 */
+    readKnetMetadata(lines) {
+        const header = lines.slice(0, 17);
+        const metadata = { ...this.emptyMetadata(), isKnet: true };
+        const samplingLine = header.find(line => /^Sampling Freq/.test(line)) || '';
+        const samplingMatch = samplingLine.match(/^Sampling Freq(?:\(Hz\))?\s+(.+?)\s*Hz\s*$/i);
+        const samplingRate = samplingMatch ? this.parseNumber(samplingMatch[1]) : NaN;
+        if (!Number.isFinite(samplingRate) || samplingRate <= 0) {
+            throw new Error('K-netのサンプリング周波数が不正または欠落しています');
         }
+        metadata.samplingRate = samplingRate;
 
-        metadata.isKnet = true;
-
-        // サンプリング周波数を取得（11行目）
-        if (lines.length > 10) {
-            const samplingLine = lines[10];
-            const match = samplingLine.match(/(\d+)Hz/);
-            if (match) {
-                metadata.samplingRate = parseInt(match[1]);
-            }
+        const scaleLine = header.find(line => /^Scale Factor/.test(line)) || '';
+        const scaleMatch = scaleLine.match(/^Scale Factor\s+(.+?)\s*\(gal\)\s*\/\s*(.+?)\s*$/i);
+        const numerator = scaleMatch ? this.parseNumber(scaleMatch[1]) : NaN;
+        const denominator = scaleMatch ? this.parseNumber(scaleMatch[2]) : NaN;
+        const scaleFactor = numerator / denominator;
+        if (!(numerator > 0) || !(denominator > 0) || !Number.isFinite(scaleFactor) || scaleFactor <= 0) {
+            throw new Error('K-netのスケールファクターが不正または欠落しています');
         }
+        metadata.scaleFactor = scaleFactor;
 
-        // 継続時間を取得（12行目）
-        if (lines.length > 11) {
-            const durationLine = lines[11];
-            const match = durationLine.match(/(\d+(\.\d+)?)/);
-            if (match) {
-                metadata.duration = parseFloat(match[1]);
-            }
-        }
-
-        // 方向を取得（13行目）
-        if (lines.length > 12) {
-            const dirLine = lines[12];
-            const match = dirLine.match(/Dir\.\s+(.+)/);
-            if (match) {
-                metadata.direction = match[1].trim();
-            }
-        }
-
-        // スケールファクターを取得（14行目）
-        if (lines.length > 13) {
-            const scaleFactorLine = lines[13];
-            const match = scaleFactorLine.match(/(\d+)\(gal\)\/(\d+)/);
-            if (match) {
-                const numerator = parseFloat(match[1]);
-                const denominator = parseFloat(match[2]);
-                metadata.scaleFactor = numerator / denominator;
-            }
-        }
-
-        // 観測点コードを取得（6行目）
-        if (lines.length > 5) {
-            const stationLine = lines[5];
-            const match = stationLine.match(/Station Code\s+(.+)/);
-            if (match) {
-                metadata.stationCode = match[1].trim();
-            }
-        }
-
+        const durationLine = header.find(line => /^Duration Time/.test(line)) || '';
+        const durationMatch = durationLine.match(/^Duration Time\(s\)\s+(.+?)\s*$/);
+        const duration = durationMatch ? this.parseNumber(durationMatch[1]) : NaN;
+        metadata.duration = Number.isFinite(duration) && duration >= 0 ? duration : null;
+        const stationLine = header.find(line => /^Station Code/.test(line)) || '';
+        metadata.stationCode = stationLine.replace(/^Station Code\s*/, '').trim() || null;
+        const directionLine = header.find(line => /^Dir\./.test(line)) || '';
+        metadata.direction = directionLine.replace(/^Dir\.\s*/, '').trim() || null;
         return metadata;
     },
 
-    /**
-     * ファイルを読み込んで数値配列に変換
-     * @param {File} file - ファイルオブジェクト
-     * @param {Object} options - オプション
-     * @returns {Promise<Object>} - { data: number[], metadata: Object }
-     */
-    async loadFile(file, options = {}) {
-        const text = await this.readAsText(file);
-        const metadata = this.extractKnetMetadata(text);
-        const data = this.parseData(text, options);
-
+    /** 17行のヘッダーと数値データをまとめて解析する。 */
+    parseKnetRecord(text) {
+        const lines = text.split(/\r\n|\n|\r/);
+        const metadata = this.readKnetMetadata(lines);
+        const data = [];
+        for (let i = 17; i < lines.length; i++) {
+            if (!lines[i].trim()) {
+                continue;
+            }
+            for (const token of lines[i].trim().split(/\s+/)) {
+                const count = this.parseNumber(token);
+                const acceleration = count * metadata.scaleFactor;
+                if (!Number.isFinite(count) || !Number.isFinite(acceleration)) {
+                    throw new Error(`K-netの数値データが不正です（${i + 1}行目）`);
+                }
+                data.push(acceleration);
+            }
+        }
+        if (data.length === 0) {
+            throw new Error('K-netフォーマットからデータを抽出できませんでした');
+        }
         return { data, metadata };
     },
 
-    /**
-     * ファイル拡張子を取得
-     * @param {string} filename - ファイル名
-     * @returns {string}
-     */
+    parseKnetData(text) {
+        return this.parseKnetRecord(text).data;
+    },
+
+    extractKnetMetadata(text) {
+        return this.isKnetFormat(text)
+            ? this.readKnetMetadata(text.split(/\r\n|\n|\r/))
+            : this.emptyMetadata();
+    },
+
+    async loadFile(file, options = {}) {
+        return this.parse(await this.readAsText(file), options);
+    },
+
     getExtension(filename) {
         const parts = filename.split('.');
         return parts.length > 1 ? parts.pop().toLowerCase() : '';
     },
 
-    /**
-     * ファイルが対応形式かチェック
-     * @param {File} file - ファイルオブジェクト
-     * @returns {boolean}
-     */
     isValidFileType(file) {
-        const validExtensions = ['csv', 'txt', 'dat'];
-        const knetExtensions = ['ew', 'ns', 'ud', 'ew2', 'ns2', 'ud2'];
-        const extension = this.getExtension(file.name);
-        return validExtensions.includes(extension) || knetExtensions.includes(extension);
+        const validExtensions = ['csv', 'txt', 'dat', 'ew', 'ns', 'ud', 'ew2', 'ns2', 'ud2'];
+        return validExtensions.includes(this.getExtension(file.name));
     }
 };
 
-// グローバルにエクスポート
 window.FileReaderModule = FileReaderModule;
