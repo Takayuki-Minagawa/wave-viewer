@@ -53,8 +53,9 @@ const FileReaderModule = {
         const allowGroupedLine = delimiter === null && !Object.hasOwn(options, 'columnIndex');
 
         for (let index = skipHeader; index < lines.length; index++) {
-            const line = lines[index].trim();
-            if (!line || /^(#|\/\/)/.test(line)) {
+            const line = lines[index];
+            const trimmed = line.trim();
+            if (!trimmed || /^(#|\/\/)/.test(trimmed)) {
                 continue;
             }
             if (detectedDelimiter === undefined) {
@@ -95,23 +96,27 @@ const FileReaderModule = {
         return Number.isFinite(number) ? number : NaN;
     },
 
-    /** 先頭の数値行から区切り文字を検出する。前後の空白は区切りとみなさない。 */
+    /** 先頭の数値行から区切り文字を検出する。端のタブは空欄を表す区切りとして保持する。 */
     detectDelimiter(line, allowGroupedLine = true) {
         if (!line) {
             return null;
         }
         const trimmed = line.trim();
+        // TSVの先頭・末尾の空欄を通常のインデントとして除去しない。
+        const outsideQuotes = line.replace(/"(?:[^"]|"")*"/g, '');
+        if (outsideQuotes.includes('\t')) {
+            return '\t';
+        }
         if (allowGroupedLine && Number.isFinite(this.parseNumber(trimmed))) {
             return null;
         }
         // 引用符内のカンマは列区切りではない。
-        const outsideQuotes = trimmed.replace(/"(?:[^"]|"")*"/g, '');
-        for (const delimiter of ['\t', ';', ',']) {
+        for (const delimiter of [';', ',']) {
             if (outsideQuotes.includes(delimiter)) {
                 return delimiter;
             }
         }
-        return /\s/.test(outsideQuotes) ? ' ' : null;
+        return /\s/.test(outsideQuotes.trim()) ? ' ' : null;
     },
 
     /** 単純な数値CSVの引用符を尊重して列を分割する。 */

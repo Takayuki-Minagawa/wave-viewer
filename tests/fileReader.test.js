@@ -50,6 +50,17 @@ test('quoted CSV numeric fields preserve internal grouping commas', () => {
     assert.throws(() => values('0,"1,234.56\n1,2', { columnIndex: 1 }), /1行目/);
 });
 
+test('tab-delimited empty cells retain their column positions', () => {
+    assert.throws(() => values('1\t10\n\t20\n3\t30'), /2行目、1列目/);
+    assert.throws(() => values('\t20\n3\t30'), /1行目、1列目/);
+    assert.throws(() => values('1\t\n3\t30', { columnIndex: 1 }), /1行目、2列目/);
+    assert.deepEqual(values('0\t1\n\t2', { columnIndex: 1 }), [1, 2]);
+    assert.deepEqual(values('0\t1\t\n\t2\t3', { columnIndex: 1 }), [1, 2]);
+    assert.deepEqual(values('\t1\n\t2', { columnIndex: 1 }), [1, 2]);
+    assert.deepEqual(values('1\t\n2\t'), [1, 2]);
+    assert.deepEqual(values('   1.5  \n  -2.5  '), [1.5, -2.5]);
+});
+
 test('missing cells and invalid parser options are rejected', () => {
     assert.throws(() => values('0,1\n1,\n2,3', { columnIndex: 1 }), /2行目、2列目/);
     assert.throws(() => values('0,1\n1', { columnIndex: 1 }), /2行目、2列目/);
