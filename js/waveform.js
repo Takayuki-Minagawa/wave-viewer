@@ -307,15 +307,15 @@ const WaveformChart = {
         const { labels, values } = this.downsample(filteredFreq, filteredAmp, 1000);
 
         const yAxisLabel = isPowerSpectrum
-            ? `パワー [${unit}²]`
-            : `振幅 [${unit}]`;
+            ? `${I18n.t('charts.power')} [(${unit})²]`
+            : `${I18n.t('charts.amplitude')} [${unit}]`;
 
         this.spectrumChart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: isPowerSpectrum ? 'パワースペクトル' : '振幅スペクトル',
+                    label: I18n.t(isPowerSpectrum ? 'charts.powerSpectrum' : 'charts.amplitudeSpectrum'),
                     data: values,
                     borderColor: 'rgba(220, 53, 69, 1)',
                     backgroundColor: 'rgba(220, 53, 69, 0.1)',
@@ -717,11 +717,11 @@ const WaveformChart = {
 
         this.spectrumChart.data.labels = labels;
         this.spectrumChart.data.datasets[0].data = values;
-        this.spectrumChart.data.datasets[0].label = isPowerSpectrum ? 'パワースペクトル' : '振幅スペクトル';
+        this.spectrumChart.data.datasets[0].label = I18n.t(isPowerSpectrum ? 'charts.powerSpectrum' : 'charts.amplitudeSpectrum');
 
         const yAxisLabel = isPowerSpectrum
-            ? `パワー [${unit}²]`
-            : `振幅 [${unit}]`;
+            ? `${I18n.t('charts.power')} [(${unit})²]`
+            : `${I18n.t('charts.amplitude')} [${unit}]`;
 
         this.spectrumChart.options.scales.x.type = logScale ? 'logarithmic' : 'linear';
         this.spectrumChart.options.scales.x.ticks.callback = (value) => {

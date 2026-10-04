@@ -23,7 +23,8 @@ const I18n = {
                 skipHeader: 'ヘッダー行スキップ:',
                 dataUnit: 'データ単位:',
                 analyzeBtn: '🔍 解析実行',
-                analyzing: '解析中...'
+                analyzing: '解析中...',
+                cancel: 'キャンセル'
             },
             // ドロップゾーン
             dropZone: {
@@ -45,6 +46,13 @@ const I18n = {
                 integrationHint: '積分により計算（ベースライン補正済み）',
                 doubleIntegrationHint: '2重積分により計算（ベースライン補正済み）',
                 responseHint: 'h=2%, 3%, 5% / 周期0.02-10s（対数等間隔）',
+                window: '窓関数',
+                hann: 'Hann（標準）',
+                rectangular: '矩形（窓なし）',
+                spectrumHint: '振幅は窓の利得補正済み。パワー表示は振幅の二乗（PSDではありません）。',
+                amplitude: '振幅',
+                power: '二乗振幅',
+                amplitudeSpectrum: '振幅スペクトル',
                 logScale: '横軸を対数表示',
                 powerSpectrum: 'パワースペクトル',
                 time: '時間',
@@ -70,6 +78,7 @@ const I18n = {
                 velocity: '📥 速度データ',
                 displacement: '📥 変位データ',
                 responseSpectra: '📥 応答スペクトル',
+                fourier: '📥 フーリエスペクトル',
                 all: '📥 全データ（CSV）'
             },
             // マニュアル
@@ -104,7 +113,8 @@ const I18n = {
                     '【ズーム】マウスホイールで拡大・縮小',
                     '【パン】ドラッグでグラフを移動',
                     '【リセット】各グラフの「リセット」ボタンで初期表示に戻る',
-                    '【スペクトル設定】横軸対数表示、パワースペクトルの切替が可能',
+                    '【スペクトル設定】窓関数・横軸対数表示・パワー表示を切替可能。窓の変更はFFTのみに適用',
+                    '【キャンセル】解析中の計算を停止。ファイル選択で新しい解析に切替可能',
                     '【応答スペクトル】周期軸（対数）でh=2/3/5%を比較可能'
                 ],
                 notes: '注意事項',
@@ -113,6 +123,9 @@ const I18n = {
                     '大容量データは自動的にダウンサンプリングして表示',
                     'K-netデータは単位がcm/s2に自動設定され、速度表示はcm/sになります',
                     '応答スペクトルCSVはSa/Sv/Sdをh=2/3/5%で出力します',
+                    '応答スペクトルは入力の時間刻みに依存します。短周期は刻みを細かくした結果と比較してください',
+                    'フーリエCSVはDCからNyquistまでの周波数・振幅・二乗振幅・窓名を出力します',
+                    '不正な数値行は行番号付きエラーとなります。ヘッダーはスキップ数で指定してください',
                     'エクスポートされるCSVファイルはExcel対応（BOM付きUTF-8）'
                 ]
             },
@@ -122,6 +135,7 @@ const I18n = {
                 noFileError: 'ファイルを選択してください。',
                 noDataError: 'データがありません。まずファイルを読み込んで解析を実行してください。',
                 invalidSamplingRate: 'サンプリング周波数は正の数を入力してください。',
+                invalidSkipHeader: 'ヘッダー行スキップは0以上の整数を入力してください。',
                 analysisError: '解析エラー: ',
                 exportComplete: 'エクスポート完了: '
             }
@@ -140,7 +154,8 @@ const I18n = {
                 skipHeader: 'Skip Header Lines:',
                 dataUnit: 'Data Unit:',
                 analyzeBtn: '🔍 Analyze',
-                analyzing: 'Analyzing...'
+                analyzing: 'Analyzing...',
+                cancel: 'Cancel'
             },
             // Drop Zone
             dropZone: {
@@ -162,6 +177,13 @@ const I18n = {
                 integrationHint: 'Calculated by integration (baseline corrected)',
                 doubleIntegrationHint: 'Calculated by double integration (baseline corrected)',
                 responseHint: 'h=2%, 3%, 5% / Period 0.02-10s (log-spaced)',
+                window: 'Window',
+                hann: 'Hann (default)',
+                rectangular: 'Rectangular (none)',
+                spectrumHint: 'Amplitude is corrected for window gain. Power displays squared amplitude, not PSD.',
+                amplitude: 'Amplitude',
+                power: 'Squared amplitude',
+                amplitudeSpectrum: 'Amplitude Spectrum',
                 logScale: 'Log Frequency Axis',
                 powerSpectrum: 'Power Spectrum',
                 time: 'Time',
@@ -187,6 +209,7 @@ const I18n = {
                 velocity: '📥 Velocity',
                 displacement: '📥 Displacement',
                 responseSpectra: '📥 Response Spectra',
+                fourier: '📥 Fourier Spectrum',
                 all: '📥 All Data (CSV)'
             },
             // Manual
@@ -221,7 +244,8 @@ const I18n = {
                     '[Zoom] Scroll mouse wheel to zoom in/out',
                     '[Pan] Drag to move the graph',
                     '[Reset] Click "Reset" button to restore initial view',
-                    '[Spectrum] Toggle log frequency axis and power spectrum',
+                    '[Spectrum] Select a window, log frequency axis, or power display. Window changes affect FFT only',
+                    '[Cancel] Stop a pending analysis, or select another file to replace it',
                     '[Response Spectra] Compare h=2/3/5% on logarithmic period axis'
                 ],
                 notes: 'Notes',
@@ -230,6 +254,9 @@ const I18n = {
                     'Large datasets are automatically downsampled for display',
                     'K-net data units are automatically set to cm/s2 and velocity is displayed in cm/s',
                     'Response spectra CSV exports Sa/Sv/Sd for h=2/3/5%',
+                    'Response accuracy depends on the input time step. Compare short-period results with a finer time step',
+                    'Fourier CSV includes every bin from DC to Nyquist: frequency, amplitude, squared amplitude, and window',
+                    'Invalid numerical rows report a line-numbered error. Set the skip count for headers',
                     'Exported CSV files are Excel-compatible (UTF-8 with BOM)'
                 ]
             },
@@ -239,6 +266,7 @@ const I18n = {
                 noFileError: 'Please select a file.',
                 noDataError: 'No data available. Please load a file and run analysis first.',
                 invalidSamplingRate: 'Please enter a positive number for sampling rate.',
+                invalidSkipHeader: 'Skip header lines must be a non-negative integer.',
                 analysisError: 'Analysis Error: ',
                 exportComplete: 'Export Complete: '
             }

@@ -591,3 +591,17 @@ body {
         transform: rotate(360deg);
     }
 }
+
+/* 窓関数の選択は狭い画面でもチャート操作と一緒に折り返す */
+.chart-controls {
+    flex-wrap: wrap;
+}
+
+.chart-controls select {
+    max-width: 100%;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: #333;
+}

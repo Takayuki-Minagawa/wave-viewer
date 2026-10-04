@@ -28,37 +28,57 @@ const FFT = {
     },
 
     /**
-     * 窓関数を適用
-     * @param {number[]} data - 入力データ
+     * 窓関数の係数を生成
+     * @param {number} length - データ長
      * @param {string} windowType - 窓関数の種類
-     * @returns {number[]} - 窓関数適用後のデータ
+     * @returns {number[]} - 窓係数
      */
-    applyWindow(data, windowType = 'hanning') {
-        const n = data.length;
-        const windowed = new Array(n);
+    windowCoefficients(length, windowType = 'hanning') {
+        if (!Number.isInteger(length) || length < 1) {
+            throw new Error('窓関数には1点以上のデータが必要です');
+        }
 
-        for (let i = 0; i < n; i++) {
+        // 対称Hann窓は2点以下で全て0になるため矩形窓を使用する。
+        if (length <= 2) {
+            return new Array(length).fill(1);
+        }
+
+        const coefficients = new Array(length);
+
+        for (let i = 0; i < length; i++) {
             let w;
             switch (windowType) {
+            case 'hann':
             case 'hanning':
-                w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (n - 1)));
+                w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (length - 1)));
                 break;
             case 'hamming':
-                w = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (n - 1));
+                w = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (length - 1));
                 break;
             case 'blackman':
-                w = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1))
-                        + 0.08 * Math.cos(4 * Math.PI * i / (n - 1));
+                w = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / (length - 1))
+                        + 0.08 * Math.cos(4 * Math.PI * i / (length - 1));
                 break;
             case 'rectangular':
             default:
                 w = 1;
                 break;
             }
-            windowed[i] = data[i] * w;
+            coefficients[i] = w;
         }
 
-        return windowed;
+        return coefficients;
+    },
+
+    /**
+     * 窓関数を適用（入力データは変更しない）
+     * @param {number[]} data - 入力データ
+     * @param {string} windowType - 窓関数の種類
+     * @returns {number[]} - 窓関数適用後のデータ
+     */
+    applyWindow(data, windowType = 'hanning') {
+        const coefficients = this.windowCoefficients(data.length, windowType);
+        return data.map((value, i) => value * coefficients[i]);
     },
 
     /**
@@ -90,13 +110,11 @@ const FFT = {
         // バタフライ演算
         for (let mmax = 1; mmax < n; mmax <<= 1) {
             const theta = -Math.PI / mmax;
-            const wpr = Math.cos(theta);
-            const wpi = Math.sin(theta);
 
             for (let m = 0; m < mmax; m++) {
                 const angle = m * theta;
-                let wr = Math.cos(angle);
-                let wi = Math.sin(angle);
+                const wr = Math.cos(angle);
+                const wi = Math.sin(angle);
 
                 for (let i = m; i < n; i += mmax << 1) {
                     const j = i + mmax;
@@ -108,10 +126,6 @@ const FFT = {
                     real[i] += tr;
                     imag[i] += ti;
                 }
-
-                const wtemp = wr;
-                wr = wr * wpr - wi * wpi;
-                wi = wi * wpr + wtemp * wpi;
             }
         }
     },
@@ -124,13 +138,27 @@ const FFT = {
      * @returns {Object} - 周波数と振幅の配列
      */
     amplitudeSpectrum(data, samplingRate, options = {}) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('FFTには有限の数値データが1点以上必要です');
+        }
+        for (const value of data) {
+            if (!Number.isFinite(value)) {
+                throw new Error('FFTには有限の数値データが1点以上必要です');
+            }
+        }
+        if (!Number.isFinite(samplingRate) || samplingRate <= 0) {
+            throw new Error('サンプリング周波数が不正です');
+        }
+
         const {
             windowType = 'hanning',
             normalize = true
         } = options;
 
-        // 窓関数を適用
-        let processedData = this.applyWindow(data, windowType);
+        // 窓の振幅減衰を補正する。ゼロパディングは正規化係数に含めない。
+        const coefficients = this.windowCoefficients(data.length, windowType);
+        const windowSum = coefficients.reduce((sum, value) => sum + value, 0);
+        let processedData = data.map((value, i) => value * coefficients[i]);
 
         // ゼロパディング
         processedData = this.zeroPad(processedData);
@@ -144,18 +172,18 @@ const FFT = {
         this.transform(real, imag);
 
         // 振幅スペクトルを計算（ナイキスト周波数まで）
-        const halfN = n / 2;
+        const halfN = Math.floor(n / 2);
         const frequencies = [];
         const amplitudes = [];
         const df = samplingRate / n;
 
         for (let i = 0; i <= halfN; i++) {
             frequencies.push(i * df);
-            let amp = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
+            let amp = Math.hypot(real[i], imag[i]);
 
             if (normalize) {
-                // 正規化（DC成分以外は2倍）
-                amp = i === 0 || i === halfN ? amp / n : (2 * amp) / n;
+                // 片側のピーク振幅。DCとナイキスト成分は2倍しない。
+                amp = i === 0 || i === halfN ? amp / windowSum : (2 * amp) / windowSum;
             }
 
             amplitudes.push(amp);
@@ -165,7 +193,7 @@ const FFT = {
     },
 
     /**
-     * パワースペクトルを計算
+     * ピーク振幅の二乗スペクトルを計算（パワースペクトル密度/PSDではない）
      * @param {number[]} data - 時系列データ
      * @param {number} samplingRate - サンプリング周波数
      * @param {Object} options - オプション
@@ -185,12 +213,14 @@ const FFT = {
      * @returns {Object} - ピーク周波数と振幅
      */
     findPeakFrequency(frequencies, amplitudes, minFreq = 0.1) {
-        let maxAmp = -Infinity;
+        let maxAmp = 0;
         let peakFreq = 0;
-        let peakIndex = 0;
+        let peakIndex = -1;
 
         for (let i = 0; i < frequencies.length; i++) {
-            if (frequencies[i] >= minFreq && amplitudes[i] > maxAmp) {
+            if (Number.isFinite(frequencies[i]) && frequencies[i] >= minFreq
+                && Number.isFinite(amplitudes[i]) && amplitudes[i] >= 0
+                && (peakIndex === -1 || amplitudes[i] > maxAmp)) {
                 maxAmp = amplitudes[i];
                 peakFreq = frequencies[i];
                 peakIndex = i;

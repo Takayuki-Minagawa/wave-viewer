@@ -8,6 +8,15 @@
     "ecmaVersion": "latest",
     "sourceType": "script"
   },
+  "overrides": [
+    {
+      "files": ["tests/**/*.{js,cjs}"],
+      "env": {
+        "browser": false,
+        "node": true
+      }
+    }
+  ],
   "globals": {
     "Chart": "readonly",
     "FFT": "writable",
